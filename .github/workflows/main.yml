@@ -1,0 +1,28 @@
+name: Scheduled merge action
+
+on:
+   push:
+   pull_request:
+   schedule:
+    - cron: '0 0 * * *'  # every day at midnight
+
+jobs:
+  merge-from-upstream-repo:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: master             # set the branch to merge to
+          fetch-depth: 0            # get all changes
+      - name: Merge from upstream repo
+        uses: discdiver/merge-from-upstream-repo@v0.0.9
+        with:
+          useremail: rumen.mitrev@abv.bg                 # set the user email for git commits
+          username: rumenmitrev                  # set the user name for git commits
+          upstream: micmacIGN/micmac      # set the upstream repo
+          upstream-branch: master   # set the upstream branch to merge from
+          branch: master          # set the branch to merge to
+          token: ${{ secrets.TOKEN_FOR_AUTH_GIT }}  
+
+
