@@ -139,9 +139,9 @@ void cSetTiePMul_Cam::ReechRS_SH(const double &aRSSpeed, const string &aSHOut)
     {
         std::cout << "Done " << itCnf << " out of " << aVCnf.size() << endl;
         auto aCnf = aVCnf.at(itCnf);
-        std::vector<int> aVIdIm = aCnf->VIdIm();
+        const std::vector<int> & aVIdIm = aCnf->VIdIm();
         std::vector<CamStenope*> aVCam;
-        for(int &aIdIm : aVIdIm)
+        for(const int &aIdIm : aVIdIm)
         {
             std::string aNameIm = m_pSH->NameFromId(aIdIm);
             aVCam.push_back(m_Appli.mVIm.at(aNameIm).mCam);
@@ -173,15 +173,13 @@ void cSetTiePMul_Cam::ReechRS_SH(const double &aRSSpeed, const string &aSHOut)
                     aCnf->SetPt(aKPt,aKIm,aNewP2D);
             }
         }
-
-        // output modified tie points
-        std::string aNameOut0 = cSetTiePMul::StdName(m_Appli.mICNM,aSHOut,"Reech",0);
-        std::string aNameOut1 = cSetTiePMul::StdName(m_Appli.mICNM,aSHOut,"Reech",1);
-
-        m_pSH->Save(aNameOut0);
-        m_pSH->Save(aNameOut1);
-
     }
+    // output modified tie points
+    std::string aNameOut0 = cSetTiePMul::StdName(m_Appli.mICNM,aSHOut,"Reech",0);
+    std::string aNameOut1 = cSetTiePMul::StdName(m_Appli.mICNM,aSHOut,"Reech",1);
+
+    m_pSH->Save(aNameOut0);
+    m_pSH->Save(aNameOut1);
 }
 
 
@@ -208,11 +206,12 @@ cSetOfMesureAppuisFlottants_Cam::cSetOfMesureAppuisFlottants_Cam(const std::stri
     std::list<cMesureAppuiFlottant1Im> & aLMAF = mDico.MesureAppuiFlottant1Im();
     for(auto &aMAF : aLMAF)
     {
-        const std::string aNameIm = aMAF.NameIm();
+        const std::string & aNameIm = aMAF.NameIm();
+        std::cout << aNameIm << endl;
         std::list<cOneMesureAF1I> & aLMes = aMAF.OneMesureAF1I();
         for(auto & aMes:aLMes)
         {
-            const std::string aNamePt = aMes.NamePt();
+            const std::string & aNamePt = aMes.NamePt();
             Pt2dr aPtIm = aMes.PtIm();
             auto search = mVPtIm.find(aNamePt);
             cIm_CamXifDate aIm_XifDate = m_Appli.mVIm.at(aNameIm);
@@ -235,11 +234,13 @@ cSetOfMesureAppuisFlottants_Cam::cSetOfMesureAppuisFlottants_Cam(const std::stri
 std::map<Key,Pt2dr> cSetOfMesureAppuisFlottants_Cam::ReechRS_MAF(const double aRSSpeed)
 {
     std::map<Key,Pt2dr> aMap;
+    int i=0, j=0;
     for(auto &aPtIm:mVPtIm)
     {
         std::vector<Pt2dr> aVOldP2D;
         std::vector<CamStenope*> aVCam;
         std::string aPtName = aPtIm.first;
+        std::cout << aPtName << endl;
         std::vector<cPtIm_CamXifDate> aVPtIm_CamXifDate = aPtIm.second;
         for(auto &aPtIm_CamXifDate:aVPtIm_CamXifDate)
         {
@@ -250,6 +251,8 @@ std::map<Key,Pt2dr> cSetOfMesureAppuisFlottants_Cam::ReechRS_MAF(const double aR
         ELISE_ASSERT(aVOldP2D.size() > 1 && aVCam.size() > 1, "Nb faiseaux < 2");
 
         Pt3dr aP3D = Intersect_Simple(aVCam , aVOldP2D);
+
+
         for(auto &aPtIm_CamXifDate:aVPtIm_CamXifDate)
         {
             std::string aImName = aPtIm_CamXifDate.mIm_CamXifDate.mName;
@@ -257,17 +260,26 @@ std::map<Key,Pt2dr> cSetOfMesureAppuisFlottants_Cam::ReechRS_MAF(const double aR
 
             double aEcartTime = (aPtIm_CamXifDate.mPtIm.y-aCam->Sz().y/2) * aRSSpeed/1000/1000;
             Pt3dr aEcartCenter = m_Appli.mVIm.at(aImName).mVitesse * aEcartTime;
-
             Pt2dr aNewP2D = Reproj(aCam, aP3D, aPtIm_CamXifDate.mPtIm, aEcartCenter);
+
+            Key aKey = pair<string,string>(aImName,aPtName);
+
             if(IsInImage(aCam->Sz(),aNewP2D))
-            {
-                Key aKey = pair<string,string>(aImName,aPtName);
+            { 
                 aMap.insert(pair<Key,Pt2dr>(aKey,aNewP2D));
+                i++;
+            }
+            else
+            {
+                aMap.insert(pair<Key,Pt2dr>(aKey,aPtIm_CamXifDate.mPtIm));
+                j++;
             }
         }
     }
 
+    std::cout << j << "/" << i+j << " points are not corrected!" << endl;
     return aMap;
+
 }
 
 void cSetOfMesureAppuisFlottants_Cam::Export_MAF(const std::string & aMAFOut, const std::map<Key,Pt2dr> & aMap)
@@ -452,6 +464,8 @@ int SimuRolShut_main(int argc, char ** argv)
                 double aX = aRatio * (aPt2d1.x-aPt2d0.x) + aPt2d0.x;
                 Pt2dr aPt2d = Pt2dr(aX,aY);
 
+                //std::cout << "P0: " << aPt2d0 << " P1: " << aPt2d1 << " Pl: " << aPt2d << endl;
+
                 if (EAMIsInit(&aNoiseGaussian))
                 {
                     aPt2d.x += distributionX(generator);
@@ -556,6 +570,7 @@ int GenerateOrient_main (int argc, char ** argv)
     Pt2dr aTInterv, aGauss;
     int aSeed;
     std::vector<std::string> aVTurn;
+    bool aTrans{true};
     ElInitArgMain
             (
                 argc, argv,
@@ -566,6 +581,7 @@ int GenerateOrient_main (int argc, char ** argv)
                 LArgMain() << EAM(aOut,"Out",true,"Output file name for genarated orientation, def=Modif_orient.txt")
                            << EAM(aSeed,"Seed",false,"Random engine, if not give, computer unix time is used.")
                            << EAM(aVTurn,"Turn",false,"List of image names representing flight turns (set the translation T(i) as T(i-1))")
+                           << EAM(aTrans,"Trans",false,"Take into account translation, def=true")
                 );
 
     // get directory
@@ -588,7 +604,7 @@ int GenerateOrient_main (int argc, char ** argv)
         CamStenope * aCam1 = aICNM->StdCamStenOfNames(aVImgs[i+1],aOri);
         Pt3dr aP1 = aCam1->PseudoOpticalCenter();
 
-        Pt3dr aP = (aP1-aP0) * aRatio;
+        Pt3dr aP = aTrans? (aP1-aP0) * aRatio : Pt3dr(0,0,0);
         //Pt3dr aP_Last = i==0 ? aP : aVTrans.back();
 
         if(IsInList(aVTurn,aVImgs[i]))
@@ -701,7 +717,44 @@ int ReechRolShut_main(int argc, char ** argv)
     return EXIT_SUCCESS;
 }
 
+int ExportTPM_main(int argc, char ** argv)
+{
+    std::string aSH, aSHFile{"PMulAll.txt"}, aOut{"multiplicity.txt"}, aDir, aSHPat;
+    ElInitArgMain
+            (
+                argc,argv,
+                LArgMain() << EAMC(aSH,"Postfix of tie point file",eSAM_IsExistFile),
+                LArgMain() << EAM(aSHFile,"SHFile",true,"tie point file name (new format), def=PMulAll.txt")
+                           << EAM(aOut,"Out",true,"Output file name, def=SH_multiplicity.txt")
+                );
 
+    SplitDirAndFile(aDir, aSHPat, aSH);
+    //cInterfChantierNameManipulateur* aICNM = cInterfChantierNameManipulateur::BasicAlloc(aDir);
+
+    std::map<int,int> aMapTPM;
+
+    cSetTiePMul * pSH=new cSetTiePMul(0);
+    pSH->AddFile("Homol" + aSH + "/" + aSHFile);
+    const std::vector<cSetPMul1ConfigTPM *> & aVCnf = pSH->VPMul();
+    for(auto & aCnf:aVCnf)
+    {
+        auto search = aMapTPM.find(aCnf->NbIm());
+        if(search == aMapTPM.end())
+            aMapTPM.insert(pair<int,int>(aCnf->NbIm(),aCnf->NbPts()));
+        else
+            aMapTPM.at(aCnf->NbIm()) += aCnf->NbPts();
+    }
+
+    ofstream aTPMFile;
+    aTPMFile.open(aOut);
+    for(auto aTPM:aMapTPM)
+    {
+        std::cout << aTPM.first << " " << aTPM.second << endl;
+        aTPMFile << aTPM.first << " " << aTPM.second << endl;
+    }
+    aTPMFile.close();
+    return EXIT_SUCCESS;
+}
 
 int ReechRolShutV1_main(int argc, char ** argv)
 {
@@ -789,15 +842,16 @@ int ReechRolShutV1_main(int argc, char ** argv)
         for(auto & aMAF : aLMAF)
         {
             std::string aNameIm = aMAF.NameIm();
-            std::list<cOneMesureAF1I> & aMes = aMAF.OneMesureAF1I();
+            //std::list<cOneMesureAF1I> & aMes = aMAF.OneMesureAF1I();
             std::cout << aNameIm << endl;
 
-            for(auto & aOneMes : aMes)
+            for(auto & aOneMes : aMAF.OneMesureAF1I())
             {
                 Pt2dr aPt = aOneMes.PtIm();
                 std::cout << aOneMes.NamePt() << " before:" << aOneMes.PtIm();
                 Pt2dr aNewPt = Pt2dr(aPt.x,aPt.y*aMapReechScale[aNameIm]);
-                aOneMes.SetPtIm(aNewPt);
+                // aOneMes.SetPtIm(aNewPt); ==> MPD D'OU VIENT CETTE FONCTION ??? COMPILE PAS
+                aOneMes.PtIm() = aNewPt;
                 std::cout << " after:" << aOneMes.PtIm() << endl;
             }
         }
@@ -807,6 +861,7 @@ int ReechRolShutV1_main(int argc, char ** argv)
     return EXIT_SUCCESS;
 
 }
+
 
 /*Footer-MicMac-eLiSe-25/06/2007
 

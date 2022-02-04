@@ -56,6 +56,8 @@ class cSpecMMVII_Appli;
 class cMMVII_Ap_NameManip;
 class cMMVII_Ap_CPU;
 class cMMVII_Appli ;
+class cExplicitCopy; ///<  Fake class use for add X(const X&) explicit with  X(cExplicitCopy,const X&)
+
 
 // MMVII_Stringifier.h
 
@@ -66,18 +68,30 @@ class cAuxAr2007;
 class cAr2007;
 
 // MMVII_Images.h
-template <const int Dim>  class cRectObjIterator;
-template <const int Dim>  class cRectObj;
+template <const int Dim>  class cPixBoxIterator;
+template <const int Dim>  class cPixBox;
+template <const int Dim>  class cBorderPixBox ;
+template <const int Dim>  class cBorderPixBoxIterator ;
+
+
 template <const int Dim> class cDataGenUnTypedIm ;
 template <class Type,const int Dim> class cDataTypedIm ;
 class cDataFileIm2D ;
 template <class Type>  class cDataIm2D  ;
 template <class Type>  class cIm2D  ;
+template <class Type>  class cDataIm3D  ;
+template <class Type>  class cIm3D  ;
 template <class Type>  class cDataIm1D  ;
 template <class Type>  class cIm1D  ;
 
+template <class TypeObj,class TypeLayer>  class cLayerData3D ;
+template <class TypeObj,class TypeLayer>  class cLayer3D ;
+
+
+
 // MMVII_Matrix.h
 template <class Type> class  cDenseVect;
+
 
 
 

@@ -471,6 +471,8 @@ bool ElGetStrSys( const std::string & i_base_cmd, std::string &o_result )
 static std::string ArgvMMDir;
 static std::string CurrentProgramFullName;
 static std::string CurrentProgramSubcommand = "unknown";
+std::string MM3DFixeByMMVII ="";
+
 void MMD_InitArgcArgv(int argc,char ** argv,int aNbMin)
 {
     static bool First=true;
@@ -540,6 +542,10 @@ void MMD_InitArgcArgv(int argc,char ** argv,int aNbMin)
 
             // if which failed then we're doomed
             ELISE_ASSERT( whichSucceed, "MMD_InitArgcArgv : unable to retrieve binaries directory" );
+        }
+        if (MM3DFixeByMMVII !="")
+        {
+           aFullArg0 = MM3DFixeByMMVII ;
         }
 
         std::string aPatProg = "([0-9]|[a-z]|[A-Z]|_)+";
@@ -649,6 +655,11 @@ std::string Basic_XML_MM_File(const std::string & aFile)
 {
    return   MMDir() + std::string("include" +std::string(ELISE_STR_DIR) + "XML_MicMac" + std::string(ELISE_STR_DIR) + aFile);
 }
+std::string Specif_XML_MM_File(const std::string & aFile)
+{
+    return   aFile;
+}
+
 std::string XML_MM_File(const std::string & aFile)
 {
 
@@ -2960,6 +2971,22 @@ cInterfChantierNameManipulateur* cInterfChantierNameManipulateur::BasicAlloc(con
 
         return aRes[0];
     }
+
+std::string cInterfChantierNameManipulateur::NameImEpip(const std::string & anOri,const std::string & aIm1,const std::string & aIm2)
+{
+   return Assoc1To3("NKS-Assoc-NameImEpip@tif",anOri,aIm1,aIm2,true);
+}
+
+std::string cInterfChantierNameManipulateur::NameOrientEpipGen(const std::string & anOri,const std::string & aIm1,const std::string & aIm2)
+{
+  return Assoc1To2 ( "NKS-Assoc-CplIm2OriGenEpi@"+anOri+"@txt", aIm1,aIm2,true);
+
+}
+
+std::string cInterfChantierNameManipulateur::NameAppuiEpip(const std::string & anOri,const std::string & aIm1,const std::string & aIm2)
+{
+   return Assoc1To3("NKS-Assoc-NameAppuiEpip",anOri,aIm1,aIm2,true);
+}
 
     std::string  cInterfChantierNameManipulateur::Assoc1To3
         (

@@ -103,7 +103,8 @@ cAppliApero::cAppliApero (cResultSubstAndStdGetFile<cParamApero> aParam) :
    mNumCalib          (0),
    mNumImage          (0),
    mLevStaB           (mParam.SectionChantier().DoStatElimBundle().ValWithDef(0)),
-   mUseVDETp          (false)
+   mUseVDETp          (false),
+   mRappelPose        (mParam.SectionChantier().RappelPose().PtrVal())
    // mGlobManiP3TI      (0)
 {
 
@@ -154,6 +155,10 @@ cAppliApero::cAppliApero (cResultSubstAndStdGetFile<cParamApero> aParam) :
             SetSqueezeDOCOAC();
      }
 
+     for (auto & aDOP  : mParam.DataObsPlane())
+     {
+         aDOP.Data() = StdGetFromAp(aDOP.NameFile(),Xml_FileObsPlane);
+     }
 
      if ( !mModeMaping)
      {
@@ -213,6 +218,11 @@ cAppliApero::cAppliApero (cResultSubstAndStdGetFile<cParamApero> aParam) :
     if (mParam.RatioMaxDistCS().IsInit())
     {
        GlobExternRatioMaxDistCS = mParam.RatioMaxDistCS().Val();
+    }
+
+    if (mParam.ExtensionIntervZ().IsInit())
+    {
+         SetExtensionIntervZInApero(mParam.ExtensionIntervZ().Val());
     }
 }
 
@@ -704,6 +714,17 @@ cCalibCam * cAppliApero::CalibFromName(const std::string & aName,cPoseCam * aPC)
 
 
 
+cDataObsPlane *  cAppliApero::GetDOPOfName(const std::string& anId)
+{
+     for (auto & aDOP  : mParam.DataObsPlane())
+         if (aDOP.Id() == anId)
+            return & aDOP;
+
+    std::cout << "Name Of required Id : " << anId << "\n";
+    ELISE_ASSERT(false,"GetDOPOfName Id don't exist");
+    return nullptr;
+}
+
 
 
 cPackObsLiaison * cAppliApero::GetPackOfName(const std::string& anId)
@@ -1161,6 +1182,9 @@ bool cAppliApero::ExportTiePEliminated() const
 {
    return (mLevStaB>=3) && IsLastEtapeOfLastIter();
 }
+
+const cRappelPose * cAppliApero::PtrRP() const {return mRappelPose;}
+
 
 /*
 int  LevStaB() const;

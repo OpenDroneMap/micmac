@@ -539,6 +539,7 @@ extern void NRrandom3InitOfTime();
 extern int  NRrandom3 (int aN);  // 0 <= X < N
 extern REAL NRrandom3 ();
 extern REAL NRrandC();  // entre -1 et 1
+extern REAL NRrandInterv(double aV0,double aV1);  // entre -1 et 1
 void ResetNRrand();
 void rationnal_approx(REAL,INT &,INT&);
 
@@ -734,10 +735,16 @@ class cElStatErreur
      void Reset();
      REAL Erreur(REAL Pos) ; // Pos en 0.0 et 1.0,  Exemple :
                              // 0.0 = Vmin, 1.0=Vmax, 0.5 = Median etc..
+     double  Avg() const;
+     double  Ect() const;
 
      private :
-     std::vector<REAL> mErrs;
-     bool              mOk;
+        void    AssertNotEmpty() const;
+        std::vector<REAL> mErrs;
+        bool              mOk;
+        REAL              mSom0;
+        REAL              mSom1;
+        REAL              mSom2;
 };
 
 

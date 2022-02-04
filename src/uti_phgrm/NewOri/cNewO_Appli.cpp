@@ -52,23 +52,27 @@ LArgMain &     cCommonMartiniAppli::ArgCMA()
 }
 
 cCommonMartiniAppli::cCommonMartiniAppli() :
-    mNameOriCalib (""),
-    mPrefHom      (""),
-    mExtName      (""),
-    mExpTxt       (false),
-    mInOri        (""),
-    mOriOut       (""),
-    mOriGPS       (""),
-    mOriCheck     (""),
-    mDebug        (false),
-    mAcceptUnSym  (true),
-    mQuick        (true),
-    mShow         (false),
-    mArg          (new LArgMain),
-    mPostInit     (false),
-    mNM           (0),
-    mNameNOMode   (TheStdModeNewOri)
+    mNameOriCalib      (""),
+    mPrefHom           (""),
+    mExtName           (""),
+    mExpTxt            (false),
+    mInOri             (""),
+    mOriOut            (""),
+    mOriGPS            (""),
+    mOriCheck          (""),
+    mDebug             (false),
+    mAcceptUnSym       (true),
+    mQuick             (true),
+    mShow              (false),
+    mTStdNbMaxTriplet   (20),
+    mTQuickNbMaxTriplet(8),
+    mTNbMinTriplet     (5),
+    mArg               (new LArgMain),
+    mPostInit          (false),
+    mNM                (0),
+    mNameNOMode        (TheStdModeNewOri)
 {
+
       (*mArg) 
               << EAM(mNameOriCalib,"OriCalib",true,"Orientation for calibration ", eSAM_IsExistDirOri)
               << EAM(mPrefHom,"SH",true,"Prefix Homologue , Def=\"\"")  // SH par homogeneite avec autre commandes 
@@ -82,7 +86,11 @@ cCommonMartiniAppli::cCommonMartiniAppli() :
               << EAM(mDebug,"Debug",true,"Debug ....")  
               << EAM(mAcceptUnSym,"AUS",true,"Accept non symetric homologous point;")  
               << EAM(mQuick,"Quick",true,"If true (default) do less test")  
+              << EAM(mTStdNbMaxTriplet,"StdNbPtTrip",true,"Max num of triplets per edge (Std mode)")  
+              << EAM(mTQuickNbMaxTriplet,"QNbPtTrip",true,"Max num of triplets per edge (Quick mode), Def=8")  
+              << EAM(mTNbMinTriplet,"NbTrip",true,"Min num of points to calculate a triplet")  
               << EAM(mShow,"Show",true,"If true (non default) print (a lot of) messages")  ;
+
 }
 
 void cCommonMartiniAppli::PostInit() const
@@ -143,6 +151,12 @@ std::string    cCommonMartiniAppli::ComParam()
    if (EAMIsInit(&mOriGPS))        aCom += " OriGPS="    + mOriGPS;
    if (EAMIsInit(&mOriCheck))      aCom += " OriCheck="    + mOriCheck;
    if (EAMIsInit(&mDebug))         aCom += " Debug="     + ToString(mDebug);
+   if (EAMIsInit(&mTStdNbMaxTriplet)) aCom += " StdNbPtTrip="     + ToString(mTStdNbMaxTriplet);
+   if (EAMIsInit(&mTQuickNbMaxTriplet)) aCom += " QNbPtTrip="     + ToString(mTQuickNbMaxTriplet);
+   if (EAMIsInit(&mTNbMinTriplet)) aCom += " NbTrip="     + ToString(mTNbMinTriplet);
+   // MPD corrige oubli !!!
+   if (EAMIsInit(&mExpTxt)) aCom += " ExpTxt="     + ToString(mExpTxt);
+
 
    return aCom;
 }

@@ -523,6 +523,7 @@ class cReadObject
          void AddDouble(const std::string & aS,double * anAdr,bool Required);
          void AddDouble(char aC,double * anAdr,bool Required);
          void AddPt3dr(const std::string & aS,Pt3dr * aP,bool Required);
+         void AddPt2dr(const std::string & aS,Pt2dr * aP,bool Required);
          void AddString(const std::string & aS,std::string * aName,bool Required);
 
 
@@ -756,7 +757,8 @@ int MPI2Ply_main(int argc,char ** argv);
 int MPI2Mnt_main(int argc,char ** argv);
 int CCL_main(int argc,char ** argv);
 int TDEpip_main(int argc, char **argv);
-
+int Sat3D_main(int argc, char **argv);
+int TiePHistoP_main(int argc, char **argv);
 
 int TestNewOriImage_main(int argc,char ** argv);
 int TestAllNewOriImage_main(int argc,char ** argv);

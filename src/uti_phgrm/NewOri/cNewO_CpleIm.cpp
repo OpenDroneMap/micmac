@@ -113,6 +113,10 @@ void  cNewO_OrInit2Im::ClikIn()
 
 double cNewO_OrInit2Im::FocMoy() const
 {
+    if (mI1->CS()==0 || mI2->CS()==0)
+    {
+       return 5000;
+    }
     double aF = 1/mI1->CS()->Focale() + 1/mI2->CS()->Focale();
     return 2 / aF;
 }
@@ -501,6 +505,7 @@ cNewO_OrInit2Im::cNewO_OrInit2Im
              aInf2 = Inf(aInf2,aP2);
              aSup2 = Sup(aSup2,aP2);
 
+
              aVP1.push_back(Pt2df(aP1.x,aP1.y));
              aVP2.push_back(Pt2df(aP2.x,aP2.y));
              aVNb.push_back((*itC)->NbArc());
@@ -509,22 +514,27 @@ cNewO_OrInit2Im::cNewO_OrInit2Im
          std::string aNameH = mI1->NM().NameHomFloat(mI1,mI2);
          mI1->NM().WriteCouple(aNameH,aVP1,aVP2,aVNb);
 
-         if (! aGenereOri) 
-         {
-            return;
-         }
     }
+
 
    // Prepare une partie de l'export xml
    mXml.Im1()   = mI1->Name();
    mXml.Im2()   = mI2->Name();
    mXml.Box1() = Box2dr(aInf1,aSup1);
    mXml.Box2() = Box2dr(aInf2,aSup2);
-   mXml.Calib() =  mI1->NM().OriCal();
    mXml.NbPts() = mPackPStd.size();
    mXml.Foc1()  = mI1->CS()->Focale();
    mXml.Foc2()  = mI2->CS()->Focale();
    mXml.FocMoy() = FocMoy();
+
+
+   if (! aGenereOri) 
+   {
+      return;
+   }
+
+   mXml.Calib() =  mI1->NM().OriCal();
+
 
    cXml_O2IComputed aXCmp;
    mXml.Geom().SetNoInit();
@@ -687,7 +697,7 @@ cNewO_OrInit2Im::cNewO_OrInit2Im
    cInterfBundle2Image * aBundle = mQuick ? mRedPvIBI  :  mFullPvIBI;
    double anErr=-1;
 
-   if (! aInOri)
+   if (! aInOri)  // Si on est pas en mode ou une Orient Init est imposee
    {
          {
             ElTimer aChrono;
@@ -830,6 +840,7 @@ cNewO_OrInit2Im::cNewO_OrInit2Im
           ElTimer aChrono;
           anErr = aBundle->ResiduEq(mBestSol,anErr);
           
+
           for (int aK=0 ; aK< (DoOri3D ? (mQuick ? 6 : 10) : 2) ; aK++)
           {
                  // std::cout << "ERRCur " <<  anErr*FocMoy() << "\n";
@@ -1009,12 +1020,27 @@ cNO_AppliOneCple::cNO_AppliOneCple(int argc,char **argv)  :
 
    // Class cNewO_NameManager classe qui permet d'acceder a tous les nom de fichier
    // crees dans Martini
-   mNM = new cNewO_NameManager(mExtName,mPrefHom,mQuick,DirOfFile(mNameIm1),mNameOriCalib,mExpTxt ? "txt" : "dat");
+
+   // MPD MODIF SINON PAS TRANSMISSION DES COMMON APPLI
+   // mNM = new cNewO_NameManager(mExtName,mPrefHom,mQuick,DirOfFile(mNameIm1),mNameOriCalib,mExpTxt ? "txt" : "dat");
+
+/*
+{
+     cNewO_NameManager * aNM0 =  new cNewO_NameManager(mExtName,mPrefHom,mQuick,DirOfFile(mNameIm1),mNameOriCalib,mExpTxt ? "txt" : "dat");
+     cNewO_OneIm* aIm0 = new cNewO_OneIm(*aNM0,mNameIm1,mGenOri);
+   std::cout << " 00000 IIii11KK111  " << aIm0->CS()->Focale() << aIm0->CS()->PP() << "\n";
+}
+*/
+
+   mNM =   cCommonMartiniAppli::NM(DirOfFile(mNameIm1));
 
 
    // Structure d'image specialisee martini
-   mIm1 = new cNewO_OneIm(*mNM,mNameIm1);
-   mIm2 = new cNewO_OneIm(*mNM,mNameIm2);
+   mIm1 = new cNewO_OneIm(*mNM,mNameIm1,mGenOri);
+   mIm2 = new cNewO_OneIm(*mNM,mNameIm2,mGenOri);
+
+   // std::cout << "IIii11KK111  " << mIm1->CS() << "\n";
+   // std::cout << "IIii11KK111  " << mIm1->CS()->Focale() << mIm1->CS()->PP() << "\n";
 
    mVI.push_back(mIm1);
    mVI.push_back(mIm2);

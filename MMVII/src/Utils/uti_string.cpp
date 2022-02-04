@@ -4,7 +4,7 @@
     \brief Implementation of utilitary services
 
 
-    Use boost and home made stuff for :
+    Use std::filesystem and home made stuff for :
 
       - split names
       - separate directories from files
@@ -13,14 +13,34 @@
 */
 
 
-#include <boost/filesystem.hpp>
+#include <experimental/filesystem>
+
+
 #include <boost/algorithm/string.hpp>
 
 
-using namespace boost::filesystem;
+using namespace std::experimental::filesystem;
+
+namespace std {
+using namespace experimental;
+}
 
 namespace MMVII
 {
+
+
+char ToHexacode(int aK)
+{
+    MMVII_INTERNAL_ASSERT_tiny((aK>=0)&&(aK<16),"ToHexacode");
+    return (aK<10) ? ('0'+aK) : ('A'+(aK-10));
+}
+
+int  FromHexaCode(char aC)
+{
+   if ((aC>='0')&&(aC<='9')) return aC-'0';
+   MMVII_INTERNAL_ASSERT_tiny((aC>='A')&&(aC<='F'),"FromHexacode");
+   return 10 + (aC-'A');
+}
 
 // Prouve la pertinence du warning sur  mTable[*aPtr] = aC;
 
@@ -58,7 +78,7 @@ cCarLookUpTable::cCarLookUpTable() :
 std::vector<std::string>  SplitString(const std::string & aStr,const std::string & aSpace)
 {
     std::vector<std::string> aRes;
-    cMMVII_Appli::TheAppli().SplitString(aRes,aStr,aSpace);
+    cMMVII_Appli::CurrentAppli().SplitString(aRes,aStr,aSpace);
     return  aRes;
 }
 
@@ -67,7 +87,7 @@ void  SplitStringArround(std::string & aBefore,std::string & aAfter,const std::s
 {
     std::string aStrSep(1,aCharSep);
     std::vector<std::string> aVStr;
-    cMMVII_Appli::TheAppli().SplitString(aVStr,aStr,aStrSep);
+    cMMVII_Appli::CurrentAppli().SplitString(aVStr,aStr,aStrSep);
 
     int aNbSplit = aVStr.size();
 
@@ -126,6 +146,11 @@ std::string Prefix(const std::string & aStr,char aSep,bool SVP,bool PrivPref)
     return aBefore;
 }
 
+std::string LastPrefix(const std::string & aStr,char aSep)
+{
+    return Prefix(aStr,aSep,true,true);
+}
+
 std::string Postfix(const std::string & aStr,char aSep,bool SVP,bool PrivPref)
 {
     std::string aBefore,aAfter;
@@ -133,6 +158,15 @@ std::string Postfix(const std::string & aStr,char aSep,bool SVP,bool PrivPref)
     return aAfter;
 }
 
+std::string LastPostfix(const std::string & aStr,char aSep)
+{
+    return Postfix(aStr,aSep,true,true);
+}
+
+std::string ChgPostix(const std::string & aPath,const std::string & aPost)
+{
+    return LastPrefix(aPath,'.') + "." + aPost;
+}
 
 bool UCaseEqual(const std::string & aStr1 ,const std::string & aStr2)
 {
@@ -172,9 +206,16 @@ bool CaseSBegin(const char * aBegin,const char * aStr)
     /*                                             */
     /* =========================================== */
 
-char DirSeparator()
+char CharDirSeparator()
 {
    return  path::preferred_separator;
+}
+
+const std::string & StringDirSeparator()
+{
+   static std::string aRes{path::preferred_separator};
+   
+   return  aRes;
 }
 
 std::string DirCur()
@@ -201,6 +242,12 @@ std::string AbsoluteName(const std::string & aName)
      return absolute(aName).c_str();
 }
 
+std::string AddBefore(const std::string & aPath,const std::string & ToAdd)
+{
+   return DirOfPath(aPath,false) + ToAdd + FileOfPath(aPath,false);
+}
+
+
 
 
 /*
@@ -219,6 +266,37 @@ std::string BUD(const std::string & aDir)
    return aPath.c_str();
 }
 */
+std::string OneUpStd(const std::string & aDir)
+{
+   const char * aC = aDir.c_str();
+   int aL = strlen(aC);
+
+   // Supress all the finishing  /
+   while ((aL>0) && (aC[aL-1] == path::preferred_separator)) 
+          aL--;
+
+   // Supress all the not /
+   while ((aL>0) && (aC[aL-1]!= path::preferred_separator))
+       aL--;
+
+   int aL0 = aL;
+   // Supress all the  /
+   while ((aL>0) && (aC[aL-1] == path::preferred_separator)) 
+         aL--;
+
+    // Add the last /
+    if (aL0!=aL) 
+        aL++;
+    return  aDir.substr(0,aL);
+}
+
+
+std::string OneUpDir(const std::string & aDir)
+{
+   std::string aRes = OneUpStd(aDir);
+   if (aRes!="") return aRes;
+   return  aDir + std::string("..") +  path::preferred_separator;
+}
 
 /** Basic but seems to work untill now
 */
@@ -229,7 +307,8 @@ std::string UpDir(const std::string & aDir,int aNb)
    {
       // aRes += std::string("..") +  path::preferred_separator;
       // aRes += ".." +  path::preferred_separator;
-      aRes = aRes + std::string("..") +  path::preferred_separator;
+      // aRes = aRes + std::string("..") +  path::preferred_separator;
+      aRes = OneUpDir(aRes);
    }
    return aRes;
 }
@@ -244,6 +323,12 @@ uintmax_t SizeFile(const std::string & aName)
 {
     path aPath(aName);
     return file_size(aPath);
+}
+
+bool IsDirectory(const std::string & aName)
+{
+    path aPath(aName);
+    return is_directory(aPath);
 }
 
 
@@ -330,19 +415,24 @@ void SkeepWhite(const char * & aC)
 
 bool CreateDirectories(const std::string & aDir,bool SVP)
 {
-    bool Ok = boost::filesystem::create_directories(aDir);
+    bool Ok = std::filesystem::create_directories(aDir);
 
     if ((! Ok) && (!SVP))
     {
         // There is something I dont understand with boost on error with create_directories,
         // for me it works but it return false, to solve later ....
+	// Ch. M.: My understanrdfing is :
+	//   - if directory is created, return true
+	//   - if directory not created because already existing, return false
+	//   - if directory not created because of error, exception is throwed
+	//          (use create_directories(aDir, errorCode) to have the noexcept version)
         if (ExistFile(aDir))
         {
             MMVII_INTERNAL_ASSERT_Unresolved(false,"Cannot create directory for arg " + aDir);
         }
         else
         {
-            MMVII_INTERNAL_ASSERT_user(eTyUEr::eCreateDir,"Cannot create directory for arg " + aDir);
+            MMVII_UsersErrror(eTyUEr::eCreateDir,"Cannot create directory for arg " + aDir);
         }
     }
     return Ok;
@@ -350,7 +440,7 @@ bool CreateDirectories(const std::string & aDir,bool SVP)
 
 bool RemoveRecurs(const  std::string & aDir,bool ReMkDir,bool SVP)
 {
-    boost::filesystem::remove_all(aDir);
+    std::filesystem::remove_all(aDir);
     if (ReMkDir)
     {
         bool aRes = CreateDirectories(aDir,SVP);
@@ -361,11 +451,8 @@ bool RemoveRecurs(const  std::string & aDir,bool ReMkDir,bool SVP)
 
 bool RemoveFile(const  std::string & aFile,bool SVP)
 {
-   bool Ok = boost::filesystem::remove(aFile);
-   if ((! Ok) && (!SVP))
-   {
-      MMVII_INTERNAL_ASSERT_user(eTyUEr::eRemoveFile,"Cannot remove file for arg " + aFile);
-   }
+   bool Ok = std::filesystem::remove(aFile);
+   MMVII_INTERNAL_ASSERT_User(  Ok||SVP  , eTyUEr::eRemoveFile,"Cannot remove file for arg " + aFile);
    return Ok;
 }
 
@@ -376,10 +463,11 @@ bool  RemovePatternFile(const  std::string & aPat,bool SVP)
     tNameSet aSet = SetNameFromString(aPat,true);
     std::vector<const std::string *> aVS;
     aSet.PutInVect(aVS,false);
+    std::string aDir = DirOfPath(aPat,false);
 
     for (const auto & aS : aVS)
     {
-        if (!RemoveFile(*aS,SVP))
+        if (!RemoveFile(aDir+*aS,SVP))
            return false;
     }
     return true;
@@ -388,16 +476,40 @@ bool  RemovePatternFile(const  std::string & aPat,bool SVP)
 
 void RenameFiles(const std::string & anOldName, const std::string & aNewName)
 {
-    boost::filesystem::rename(anOldName,aNewName);
+    std::filesystem::rename(anOldName,aNewName);
 }
 
 
-/** copy a file on another , use boost
+/** copy a file on another , use std::filesystem
 */
 
 void CopyFile(const std::string & aName,const std::string & aDest)
 {
-   boost::filesystem::copy_file(aName,aDest,boost::filesystem::copy_option::overwrite_if_exists);
+   std::filesystem::copy_file(aName,aDest,std::filesystem::copy_options::overwrite_existing);
+}
+
+void ActionDir(const std::string & aName,eModeCreateDir aMode)
+{
+   switch(aMode)
+   {
+      case eModeCreateDir::DoNoting :
+      break;
+
+      case eModeCreateDir::CreateIfNew :
+           CreateDirectories(aName,false);
+      break;
+
+      case eModeCreateDir::CreatePurge :
+           RemoveRecurs(aName,true,false);
+      break;
+
+      case eModeCreateDir::ErrorIfExist :
+           MMVII_INTERNAL_ASSERT_strong(!ExistFile(aName),"File was not expected to exist:" + aName);
+           CreateDirectories(aName,false);
+      break;
+
+      case eModeCreateDir::eNbVals : break;  // Because warning
+   }
 }
 
 
@@ -410,16 +522,16 @@ void CopyFile(const std::string & aName,const std::string & aDest)
 
 
 /**
-   Implementation of GetFilesFromDir, by adresse use boost
+   Implementation of GetFilesFromDir, by adresse use std::filesystem
 */
 
 
-void GetFilesFromDir(std::vector<std::string> & aRes,const std::string & aDir,const tNameSelector &  aNS)
+void GetFilesFromDir(std::vector<std::string> & aRes,const std::string & aDir,const tNameSelector &  aNS,bool OnlyRegular)
 {
    for (directory_iterator itr(aDir); itr!=directory_iterator(); ++itr)
    {
       std::string aName ( itr->path().filename().c_str());
-      if ( is_regular_file(itr->status()) &&  aNS.Match(aName))
+      if ( ( (!OnlyRegular) || is_regular_file(itr->status())) &&  aNS.Match(aName))
          aRes.push_back(aName);
    }
 }
@@ -427,22 +539,32 @@ void GetFilesFromDir(std::vector<std::string> & aRes,const std::string & aDir,co
 /**
    Implementation of GetFilesFromDir, by value , use GetFilesFromDir by adress
 */
-std::vector<std::string> GetFilesFromDir(const std::string & aDir,const tNameSelector &  aNS)
+std::vector<std::string> GetFilesFromDir(const std::string & aDir,const tNameSelector &  aNS,bool OnlyRegular)
 {
     std::vector<std::string> aRes;
-    GetFilesFromDir(aRes,aDir,aNS);
+    GetFilesFromDir(aRes,aDir,aNS,OnlyRegular);
  
     return aRes;
 }
 
+std::vector<std::string> GetSubDirFromDir(const std::string & aDir,const tNameSelector &  aNS)
+{
+    // std::vector<std::string> aR0 = GetFilesFromDir(aDir,aNS,false);
+    std::vector<std::string> aRes;
+    for (const auto & aN : GetFilesFromDir(aDir,aNS,false))
+       if (IsDirectory(aDir+aN))
+          aRes.push_back(aN);
+    return aRes;
+}
+
 /**
-   Implementation of RecGetFilesFromDir, by adress, use boost
+   Implementation of RecGetFilesFromDir, by adress, use std::filesystem
 */
 void RecGetFilesFromDir( std::vector<std::string> & aRes, const std::string & aDir,tNameSelector  aNS,int aLevMin, int aLevMax)
 {
     for (recursive_directory_iterator itr(aDir); itr!=        recursive_directory_iterator(); ++itr)
     {
-        int aLev = itr.level();
+        int aLev = itr.depth();
         if ((aLev>=aLevMin) && (aLev<aLevMax))
         {
            std::string aName(itr->path().c_str());
@@ -481,9 +603,9 @@ std::vector<std::string>  GetFilesFromDirAndER(const std::string & aDir,const st
 void TestBooostIter()
 {
 
-   std:: cout <<  boost::filesystem::absolute("./MMVII") << '\n';
-   std:: cout <<  boost::filesystem::absolute("MMVII") << '\n';
-   std:: cout <<  boost::filesystem::absolute("./") << '\n';
+   std:: cout <<  std::filesystem::absolute("./MMVII") << '\n';
+   std:: cout <<  std::filesystem::absolute("MMVII") << '\n';
+   std:: cout <<  std::filesystem::absolute("./") << '\n';
 getchar();
 
 for (        recursive_directory_iterator itr("./"); itr!=        recursive_directory_iterator(); ++itr)
@@ -495,6 +617,28 @@ for (        recursive_directory_iterator itr("./"); itr!=        recursive_dire
 }
 }
 */
+std::string replaceFirstOccurrence
+            (
+                const std::string& s,
+                const std::string& toReplace,
+                const std::string& replaceWith,
+                bool  SVP
+            )
+{
+    std::size_t pos = s.find(toReplace);
+    if (pos == std::string::npos)
+    {
+        if (!SVP)
+        {
+           StdOut() << "REPLACE ["<< toReplace << "] by : [" << replaceWith << "\n";
+           StdOut() << "in [" << s << "]\n";
+           MMVII_INTERNAL_ASSERT_always(false,"Cannot make subs");
+        }
+        return "";
+    }
+    std::string aDup = s;
+    return aDup.replace(pos, toReplace.length(), replaceWith);
+}
 
 };
 

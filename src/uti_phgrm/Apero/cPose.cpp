@@ -43,7 +43,7 @@ Header-MicMac-eLiSe-25/06/2007*/
 
 
 
-#include "Apero.h"
+#include "cPose.h"
 
     /* ========== cStructRigidInit ============*/
 
@@ -56,20 +56,13 @@ cStructRigidInit::cStructRigidInit(cPoseCam * RigidMere,const ElRotation3D & aR)
 
 static const int NbMinCreateIm = 200;
 
-class cPtAVGR;
-class cAperoVisuGlobRes;
+//class cPtAVGR;
+//class cAperoVisuGlobRes;
 
+
+/***************** classes moved to cPose.h *******************/
      /*===========     cPtAVGR  ===========*/
 
-class cPtAVGR
-{
-    public :
-        cPtAVGR (const Pt3dr & aP,double aRes);
-        Pt3df mPt;
-        float mRes;
-        float mResFiltr;
-        bool  mInQt;
-};
 
 
 cPtAVGR::cPtAVGR(const Pt3dr & aP,double aRes) :
@@ -78,15 +71,15 @@ cPtAVGR::cPtAVGR(const Pt3dr & aP,double aRes) :
 {
 }
 
-class cFoncPtOfPtAVGR
+/*class cFoncPtOfPtAVGR
 {
    public :
        Pt2dr operator () (cPtAVGR * aP) {return  Pt2dr(aP->mPt.x,aP->mPt.y);}
-};
+};*/
 
      /*===========     cAperoVisuGlobRes  ===========*/
 
-typedef enum
+/*typedef enum
 {
     eBAVGR_X,
     eBAVGR_Y,
@@ -122,7 +115,7 @@ class cAperoVisuGlobRes
        cPlyCloud            mPC;
        cPlyCloud            mPCLeg;  // Legende
        double               mVMilZ;
-};
+};*/
 
 
 cAperoVisuGlobRes::cAperoVisuGlobRes() :
@@ -356,7 +349,7 @@ static cAperoVisuGlobRes mAVGR;
 
 //============================================
 
-class cInfoAccumRes
+/*class cInfoAccumRes
 {
      public :
        cInfoAccumRes(const Pt2dr & aPt,double aPds,double aResidu,const Pt2dr & aDir);
@@ -365,7 +358,7 @@ class cInfoAccumRes
        double mPds;
        double mResidu;
        Pt2dr  mDir;
-};
+};*/
 
 
 cInfoAccumRes::cInfoAccumRes(const Pt2dr & aPt,double aPds,double aResidu,const Pt2dr & aDir) :
@@ -376,7 +369,7 @@ cInfoAccumRes::cInfoAccumRes(const Pt2dr & aPt,double aPds,double aResidu,const 
 {
 }
 
-class cAccumResidu
+/*class cAccumResidu
 {
     public :
        void Accum(const cInfoAccumRes &);
@@ -407,7 +400,7 @@ class cAccumResidu
        bool                     mInit;
        int                      mDegPol;
        L2SysSurResol *          mSys;
-};
+};*/
 
 cAccumResidu::cAccumResidu(Pt2di aSz,double aResol,bool OnlySign,int aDegPol) :
    mNbInfo (0),
@@ -1005,7 +998,10 @@ cPoseCam::cPoseCam
     mEqOffsetGPS         (0),
     mSRI                 (nullptr),
     mBlocCam             (nullptr),
-    mPoseInBlocCam       (nullptr)
+    mNumTimeBloc         (-1),
+    mPoseInBlocCam       (nullptr),
+    mUseRappelPose       (false),
+    mRotURP              (ElRotation3D::Id)
 {
     mPrec = this;
     mNext = this;
@@ -1104,6 +1100,17 @@ bool cPoseCam::FidExist() const
    return mFidExist;
 }
 
+
+void cPoseCam::SetNumTimeBloc(int aNum)
+{
+   mNumTimeBloc = aNum;
+}
+
+int cPoseCam::DifBlocInf1(const cPoseCam & aPC) const
+{
+   if ((mNumTimeBloc==-1) || (aPC.mNumTimeBloc==-1)) return 1000;
+   return ElAbs(mNumTimeBloc-aPC.mNumTimeBloc);
+}
 
 
 
@@ -1532,15 +1539,22 @@ void  cPoseCam::AddLink(cPoseCam * aPC)
 
 
 
-void cPoseCam::SetCurRot(const ElRotation3D & aRot)
+void cPoseCam::PCSetCurRot(const ElRotation3D & aRot)
 {
+    ELISE_ASSERT(!mUseRappelPose,"Internam Error, probaly bascule + UseRappelPose");
+
+
     AssertHasNotCamNonOrtho();
-    mCF->SetCurRot(aRot);
+    mCF->SetCurRot(aRot,aRot);
 }
 
 
 void  cPoseCam::SetBascRig(const cSolBasculeRig & aSBR)
 {
+ 
+    //  Correc MPD 20/05/21 : put PCSetCurRot  after aP =  aSBR(aP);
+    // else the bascule on the point is done twice and altisol is bad ...
+    // PCSetCurRot(aSBR.TransformOriC2M(CurRot()));
 
     Pt3dr aP;
     if (mSomPM)
@@ -1551,13 +1565,21 @@ void  cPoseCam::SetBascRig(const cSolBasculeRig & aSBR)
     else
     {
         const CamStenope *  aCS = CurCam() ;
-        ELISE_ASSERT( (mProfondeur != PROF_UNDEF()),"No Profondeur in cPoseCam::SetBascRig");
-
-        aP =  aCS->ImEtProf2Terrain(aCS->Sz()/2.0,mProfondeur);
-        aP =  aSBR(aP);
+        if (mProfondeur == PROF_UNDEF())
+        {
+            std::cout << "Warn : NoProfInBasc For camera =" << mName << "\n";
+            PCSetCurRot(aSBR.TransformOriC2M(CurRot()));
+            return;
+            // ELISE_ASSERT( false,"No Profondeur in cPoseCam::SetBascRig");
+        }
+        else
+        {
+            aP =  aCS->ImEtProf2Terrain(aCS->Sz()/2.0,mProfondeur);
+            aP =  aSBR(aP);
+        }
     }
+    PCSetCurRot(aSBR.TransformOriC2M(CurRot()));
 
-    SetCurRot(aSBR.TransformOriC2M(CurRot()));
 
 
     const CamStenope *  aCS = CurCam() ;
@@ -1684,12 +1706,12 @@ double DistanceMatr(const ElRotation3D & aR1,const ElRotation3D & aR2)
    return aId.L2(aMatr);
 }
 
-class cTransfo3DIdent : public cTransfo3D
+/*class cTransfo3DIdent : public cTransfo3D
 {
      public :
           std::vector<Pt3dr> Src2Cibl(const std::vector<Pt3dr> & aSrc) const {return aSrc;}
 
-};
+};*/
 
 
 extern bool DebugOFPA;
@@ -2291,7 +2313,6 @@ if  (mSRI && MPD_MM())
         ElCamera::ChangeSys(aVCam,aTransfo,true,true);
 
         ElRotation3D aRMod = aCS->Orient();
-        // mCF->SetCurRot(aRMod.inv());
         aRot = aRMod.inv();
 
 // ShowMatr("Entree",aRot.Mat());
@@ -2300,19 +2321,27 @@ if  (mSRI && MPD_MM())
     }
 
 
+    mRotURP = aRot;
+    mUseRappelPose = mAppli.PtrRP()  &&  mAppli.PtrRP()->PatternApply()->Match(mName);
+    if (mUseRappelPose)
+    {
+        CamStenope * aCS = mAppli.ICNM()->StdCamStenOfNames(mName,mAppli.PtrRP()->IdOrient());
+        mRotURP = aCS->Orient().inv();
+    }
+
     double aLMG = mAppli.Param().LimModeGL().Val();
     double aGVal = GuimbalAnalyse(aRot,false);
-    if ((aLMG>0) && (aGVal<aLMG))
+    if (((aLMG>0) && (aGVal<aLMG)) || mUseRappelPose)
     {
        std::cout << "GUIMBAL-INIT " << mName << " " << aGVal<< "\n";
-       mCF->SetGL(true);
+       mCF->SetGL(true,mRotURP);
     }
     else
     {
        std::cout << "NO GUIMBAL " << mName  << " " << aGVal<< "\n";
     }
 
-    mCF->SetCurRot(aRot);
+    mCF->SetCurRot(aRot,mRotURP);
 
 
 
@@ -2366,6 +2395,21 @@ if  (mSRI && MPD_MM())
              mAppli.CheckInit(theLiasInit,this);
     }
 }
+
+
+void cPoseCam::UseRappelOnPose() const 
+{
+   if (! mUseRappelPose) return;
+
+   double aPdsC  = 1/ElSquare(mAppli.PtrRP()->SigmaC());
+   Pt3dr aPtPdsC(aPdsC,aPdsC,aPdsC);
+   double aPdsR  = 1/ElSquare(mAppli.PtrRP()->SigmaR());
+   Pt3dr aPtPdsR (aPdsR,aPdsR,aPdsR);
+   mRF->AddRappOnRot(mRotURP,aPtPdsC,aPtPdsR);
+
+   // std::cout << "NAME RAPPELE ON POSE =" << mName << "\n";
+}
+
 
 void cPoseCam::AffineRot()
 {
@@ -2718,6 +2762,60 @@ Pt3dr cPoseCam::CurCentre() const
 Pt3dr cPoseCam::CurCentreOfPt(const Pt2dr & ) const
 {
    return CurCentre();
+}
+
+void cPoseCam::AddObsPlaneOneCentre(const cXml_ObsPlaneOnPose & aXmlOPOO ,const double & aWeight)
+{
+    cRotationFormelle & aRF = RF();
+    const  cIncIntervale & aII = aRF. IncInterv();
+
+    std::vector<int>  aVIndexe;
+    for (int aK=3; aK<6 ; aK++)
+         aVIndexe.push_back(aII.I0Alloc()+aK);
+
+    for (const auto & a1ObsPl : aXmlOPOO.Obs1Plane() )
+    {
+        Pt3dr aVU = vunit(a1ObsPl.Vect());
+        std::vector<double> aVCoeff =  aVU.ToTab();
+
+        double aRes = mAppli.SetEq().AddEqLineaire(aWeight/ElSquare(a1ObsPl.Sigma()),aVIndexe,aVCoeff,a1ObsPl.Cste());
+        std::cout << "RRReesss ddObsPlaneOneCentre " << aRes << "\n";
+        // getchar();
+    }
+/*
+    cRotationFormelle & aRF = RF();
+    const  cIncIntervale & aII = aRF. IncInterv();
+
+    std::cout << "NAME= " << mName << "\n";
+    std::cout << "   ALLOC " <<  aII.I0Alloc() << " " <<  aII.I1Alloc() << "\n";
+    for (int I= aII.I0Alloc() ; I<aII.I1Alloc() ; I++)
+        std::cout << " VARRR= " <<       mAppli.SetEq().Alloc().GetVar(I) << "\n";
+
+getchar();
+*/
+    // std::cout << "   SOLVE " <<  aII.I0Solve() << " " <<  aII.I1Solve() << "\n";
+    
+/*
+    aII.I0Alloc();
+    class cRotationFormelle : public cElemEqFormelle,
+   const  cIncIntervale & IncInterv()
+
+    INT I0Alloc()  const ;
+    INT I1Alloc()  const ;
+
+
+  INT I0Solve()  const ;
+       INT I1Solve()  const ;
+
+
+Equation en delta par rapport a la valeur courante
+
+cSetEqFormelles
+ double AddEqLineaire (
+                          double aPds, const std::vector<int>  &    indexe,
+                          const std::vector<double>  & aCoeff,double aB);
+*/
+
 }
 
 

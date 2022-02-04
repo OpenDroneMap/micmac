@@ -88,9 +88,12 @@ int Nuage2Ply_main(int argc,char ** argv)
     bool aDoMesh = false;
     bool DoublePrec = false;
     Pt3dr anOffset(0,0,0);
+    std::vector<Pt2dr> aBoxTerrain = {aP0,aP0,aP0};
 
     std::string  aNeighMask;
     int NormByC = 0;
+    double DistCentre = 0;
+    std::vector<string> aVNormName;
     bool ForceRGB=true;
 
     ElInitArgMain
@@ -111,6 +114,8 @@ int Nuage2Ply_main(int argc,char ** argv)
                     << EAM(DoXYZ,"DoXYZ",true,"Do XYZ, export as RGB image where R=X,G=Y,B=Z")
                     << EAM(DoNrm,"Normale",true,"Add normale (Def=false, usable for Poisson)")
                     << EAM(NormByC,"NormByC",true,"Replace normal (Def=0, 2=optical center 1=point to center vector)",eSAM_InternalUse)
+                    << EAM(DistCentre,"DistC",true,"Factor to set the distance of the camera (Altitude of pleiades : 694000)",eSAM_InternalUse)
+                    << EAM(aVNormName,"NormName",true,"Replace normal name (Def=nx,ny,nz)", eSAM_NoInit )
                     << EAM(aExagZ,"ExagZ",true,"To exagerate the depth, Def=1.0")
                     << EAM(aRatio,"RatioAttrCarte",true,"")
                     << EAM(aDoMesh,"Mesh",true, "Do mesh (Def=false)")
@@ -118,6 +123,7 @@ int Nuage2Ply_main(int argc,char ** argv)
                     << EAM(anOffset,"Offs", true, "Offset in points to limit 32 Bits accuracy problem")
                     << EAM(aNeighMask,"NeighMask",true,"Mask for neighboors when larger than point selection (for normals computation)")
                     << EAM(ForceRGB,"ForceRGB",true,"Force RGB even with gray image (Def=true because of bug in QT)")
+                    << EAM(aBoxTerrain,"BoxTerrain",true,"Terrain coordinates within which the data should be exported [[xm,xM],[ym,yM],[zm,zM]]")
     );
 
     if (!MMVisualMode)
@@ -133,6 +139,7 @@ int Nuage2Ply_main(int argc,char ** argv)
       aNameOut = StdPrefix(aNameNuage) + ".ply";
 
     cElNuage3DMaille *  aNuage = cElNuage3DMaille::FromFileIm(aNameNuage,"XML_ParamNuage3DMaille","",aExagZ);
+
     if (aMask !="")
     {
          Im2D_Bits<1> aMaskN= aNuage->ImDef();
@@ -140,7 +147,7 @@ int Nuage2Ply_main(int argc,char ** argv)
          ELISE_COPY(aMaskN.all_pts(),(aMaskSup.in(0) >= aSeuilMask) && aMaskN.in(), aMaskN.out());
     }
 
-    if (aSz.x <0)
+    if (aSz.x == -1 && aSz.y ==-1)
         aSz = Pt2dr(aNuage->SzUnique());
 
     bool ColVect = false;
@@ -223,6 +230,39 @@ int Nuage2Ply_main(int argc,char ** argv)
     // ATTENTION , SI &aNeighMask => IL FAUT QUE aRes soit egal a aNuage SANS passer par ReScaleAndClip
     cElNuage3DMaille * aRes = aNuage;
 
+    //Application d'une box terrain (remplacement du crop pour que la recherche point par point ne soit pas trop longue)
+    bool doBoxterrain = (aBoxTerrain[0].x != aBoxTerrain[0].y) && (aBoxTerrain[1].x != aBoxTerrain[1].y);
+    if (doBoxterrain)
+    {
+        Pt3dr bt1(aBoxTerrain[0].x,aBoxTerrain[1].x,aBoxTerrain[2].x);
+        Pt3dr bt2(aBoxTerrain[0].x,aBoxTerrain[1].x,aBoxTerrain[2].y);
+        Pt3dr bt3(aBoxTerrain[0].x,aBoxTerrain[1].y,aBoxTerrain[2].x);
+        Pt3dr bt4(aBoxTerrain[0].x,aBoxTerrain[1].y,aBoxTerrain[2].y);
+        Pt3dr bt5(aBoxTerrain[0].y,aBoxTerrain[1].x,aBoxTerrain[2].x);
+        Pt3dr bt6(aBoxTerrain[0].y,aBoxTerrain[1].x,aBoxTerrain[2].y);
+        Pt3dr bt7(aBoxTerrain[0].y,aBoxTerrain[1].y,aBoxTerrain[2].x);
+        Pt3dr bt8(aBoxTerrain[0].y,aBoxTerrain[1].y,aBoxTerrain[2].y);
+
+        Pt2dr bi1 = aRes->Cam()->Ter2Capteur(bt1);
+        Pt2dr bi2 = aRes->Cam()->Ter2Capteur(bt2);
+        Pt2dr bi3 = aRes->Cam()->Ter2Capteur(bt3);
+        Pt2dr bi4 = aRes->Cam()->Ter2Capteur(bt4);
+        Pt2dr bi5 = aRes->Cam()->Ter2Capteur(bt5);
+        Pt2dr bi6 = aRes->Cam()->Ter2Capteur(bt6);
+        Pt2dr bi7 = aRes->Cam()->Ter2Capteur(bt7);
+        Pt2dr bi8 = aRes->Cam()->Ter2Capteur(bt8);
+        std::vector<double> vX = {bi1.x,bi2.x,bi3.x,bi4.x,bi5.x,bi6.x,bi7.x,bi8.x};
+        std::vector<double> vY = {bi1.y,bi2.y,bi3.y,bi4.y,bi5.y,bi6.y,bi7.x,bi8.y};
+
+        double xMin = *min_element(vX.begin(),vX.end());
+        double xMax = *max_element(vX.begin(),vX.end());
+        double yMin = *min_element(vY.begin(),vY.end());
+        double yMax = *max_element(vY.begin(),vY.end());
+
+        aP0=Pt2dr(xMin,yMin);
+        aSz=Pt2dr(xMax-xMin,yMax-yMin);
+    }
+
     if (EAMIsInit(&aNeighMask))
     {
         ELISE_ASSERT(   (aSc==1) && (aP0==Pt2dr(0,0)),"Can change scale && aNeighMask");
@@ -236,14 +276,41 @@ int Nuage2Ply_main(int argc,char ** argv)
        aRes =  aNuage->ReScaleAndClip(Box2dr(aP0,aP0+aSz),aSc);
      //cElNuage3DMaille * aRes = aNuage;
     std::list<std::string > aLComment(aVCom.begin(), aVCom.end());
-
     if (NormByC)
     {
         if (! EAMIsInit(&DoNrm)) DoNrm = 5;
         aRes->SetNormByCenter(NormByC);
-        aLComment.push_back("Norm is camera origin");
+        aLComment.push_back("Norm is camera origin - NormByC : "+ToString(NormByC));
     }
 
+    if (DistCentre && (NormByC==2))
+    {
+        aRes->SetDistCenter(DistCentre);
+        aLComment.push_back("Center of camera set to a distance of : "+ToString(DistCentre));
+    }
+
+    if(doBoxterrain)
+    {
+        int nbPts = aRes->GetNbPts();
+        for (Pt2di anI=aRes->Begin(); anI!=aRes->End() ;aRes->IncrIndex(anI))
+        {
+            Pt3dr aP = aRes->PtOfIndex(anI) - anOffset;
+            bool xInfMin = (aP.x<min(aBoxTerrain[0].x,aBoxTerrain[0].y)- anOffset.x);
+            bool xSupMax = (aP.x>max(aBoxTerrain[0].x,aBoxTerrain[0].y)- anOffset.x);
+            bool yInfMin = (aP.y<min(aBoxTerrain[1].x,aBoxTerrain[1].y)- anOffset.y);
+            bool ySupMax = (aP.y>max(aBoxTerrain[1].x,aBoxTerrain[1].y)- anOffset.y);
+
+            if (xInfMin || xSupMax || yInfMin || ySupMax)
+            {
+                aRes->SetNoValue(anI);
+                nbPts = nbPts-1;
+                continue;
+            }
+        }
+        aRes->SetNbPts(nbPts);
+    }
+
+    std::list<std::string > aLNormName(aVNormName.begin(), aVNormName.end());
     if (DoPly)
     {
 
@@ -252,7 +319,7 @@ int Nuage2Ply_main(int argc,char ** argv)
            aRes->AddExportMesh();
        }
 
-       aRes->PlyPutFile( aNameOut, aLComment, (aBin!=0), true, DoNrm, DoublePrec, anOffset );
+       aRes->PlyPutFile( aNameOut, aLComment, (aBin!=0), true, DoNrm, aLNormName, DoublePrec, anOffset);
     }
     if (DoXYZ)
     {
@@ -382,7 +449,7 @@ int PlyGCP_main(int argc,char ** argv)
     (
         argc,argv,
         LArgMain()  << EAMC(aNameGCP,"Name of GCP  file", eSAM_IsExistFile)
-                    << EAMC(aResol,"Resolution"),
+                    << EAMC(aResol,"Resolution, use for string"),
         LArgMain()  << EAM(aNamePly,"Out",true," Def= GCP.ply")
                     << EAM(aNorm,"Normal",true,"Def=(0,0,1)")
                     << EAM(aCoul,"Coul",true,"Color Def=[255,0,0]")

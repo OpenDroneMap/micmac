@@ -132,6 +132,7 @@ std::string MM3dBinFile_quotes(const std::string &);
 //   MMDir() + std::string("include" ELISE_STR_DIR "XML_MicMac" ELISE_STR_DIR "Apero-Cloud.xml ")
 std::string XML_MM_File(const std::string &);
 std::string Basic_XML_MM_File(const std::string &);
+std::string Specif_XML_MM_File(const std::string &);
 std::string Basic_XML_User_File(const std::string & aName);
 std::string XML_User_Or_MicMac(const std::string & aName);
 
@@ -208,6 +209,11 @@ class cInterfChantierNameManipulateur
      public :
     typedef  std::string             tKey;
 
+
+
+        std::string   NameAppuiEpip(const std::string & anOri,const std::string & aIm1,const std::string & aIm2) ;
+        std::string   NameImEpip(const std::string & anOri,const std::string & aIm1,const std::string & aIm2) ;
+        std::string   NameOrientEpipGen(const std::string & anOri,const std::string & aIm1,const std::string & aIm2) ;
 
 
         ElPackHomologue StdPackHomol(const std::string & anExt,const std::string & aI1,const std::string &aI2);
@@ -1117,6 +1123,16 @@ cXml_ParamBascRigide   EL2Xml(const cSolBasculeRig &);
 cTypeCodageMatr ExportMatr(const ElMatrix<double> & aMat);
 ElMatrix<double> ImportMat(const cTypeCodageMatr & aCM);
 
+// Return the cParamOrientSHC of a given name
+cParamOrientSHC * POriFromBloc(cStructBlockCam & aBloc,const std::string & aName,bool SVP);
+// Return the Rotation that transformate from Cam Coord to Block coordinates (in fact coord of "first" cam)
+ElRotation3D  RotCamToBlock(const cParamOrientSHC & aPOS);
+// Return the Rotation that transformate from Cam1 Coord to Cam2 Coord
+ElRotation3D  RotCam1ToCam2(const cParamOrientSHC & aPOS1,const cParamOrientSHC & aPOS2);
+
+
+
+
 cXml_Rotation El2Xml(const ElRotation3D & aRot);
 ElRotation3D Xml2El(const cXml_Rotation & aXml);
 ElRotation3D Xml2ElRot(const cXml_O2IRotation & aXml);
@@ -1503,7 +1519,7 @@ class cAppliListIm
 
 // inline functions
 
-bool isUsingSeparateDirectories(){ return MMUserEnv().UseSeparateDirectories().Val(); }
+bool isUsingSeparateDirectories(){ return MMUserEnv().UseSeparateDirectories().ValWithDef(false); }
 
 
 // === Gestionnaire de nom pour les fusions ===============
@@ -1586,8 +1602,7 @@ bool IsMacType(eTypeMMByP aType);
 
 void AutoDetermineTypeTIGB(eTypeImporGenBundle & aType,const std::string & aName);
 
-
-
+double UneUniteEnRadian(eUniteAngulaire aUnit);
 
 
 

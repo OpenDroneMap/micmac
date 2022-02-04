@@ -1,13 +1,25 @@
-To install :
+Dependences :
+-------------
+
+libboost-all-dev
+libceres-dev
+
+
+To compile :
 ------------
 
-Compile MicMac V1 without Qt support
-
-cp micmac/lib/libelise.a micmac/lib/libelise_SsQt.a
+Compile MicMac V1, then in MMVII directory :
 
 cd bin/
 make -f Mk-MMVII.makefile
+or 
+make ....
 
+First time :
+-----------
+make
+./MMVII  GenCodeSymDer
+make
 
 To generate html doc :
 ----------------------

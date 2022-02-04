@@ -51,7 +51,7 @@
            <Symb>  AffineFree=false </Symb>
            <Symb>  LibCD=false </Symb>
            <Symb>  LibDec=false </Symb>
-         
+		   <Symb>  AllFreePattern=".*" </Symb>         
 
  	   <Symb>  PoseFigee=false </Symb>
 
@@ -223,6 +223,22 @@
            <Symb> RatioMaxDistCS=30.0 </Symb>
            <Symb> ExportMatrixMarket=false </Symb>
 
+           <Symb> NumAttrPdsNewF=-1 </Symb>
+
+           <!-- ROP = Rappel On Pose -->
+           <Symb>  WithROP=false      </Symb>
+           <Symb>  ROPSigmaC=-11.0 </Symb>
+           <Symb>  ROPSigmaR=-11.0  </Symb>
+           <Symb>  ROPOrient="XXX_RopOrient"   </Symb>
+           <Symb>  ROPPattern="XXX_RopPattern"   </Symb>
+
+            <!--   Observation plane -->
+           <Symb>  WithObsPlane=false      </Symb>
+           <Symb>  FileObsPlane=XXXX      </Symb>
+           <Symb>  WeightObsPlane=1.0      </Symb>
+
+           <Symb>  WithExtenZ=false      </Symb>
+           <Symb>  ExtenZ=0.0      </Symb>
        </DicoLoc>
 
 
@@ -260,6 +276,7 @@
                   <KeySet>  NKS-Set-Orient@${AeroIn} </KeySet>
                   <KeyAssoc>  NKS-Assoc-Im2Orient@${AeroIn} </KeyAssoc>
              </BDD_Orient>
+             
 
 
              <#WHEN  VTEST=${WithGCP}>
@@ -315,6 +332,15 @@
                        <Id>  TheIdLA4 </Id>
                        <#WHEN VTEST=${WithIncLA}> <Inc> ${IncLaX}  ${IncLaY}  ${IncLaZ} </Inc> </#WHEN>
                    </GpsOffset>
+             </#WHEN>
+
+             <#WHEN VTEST=${WithObsPlane}>
+                  <DataObsPlane>
+                        <Id> IdObsPlane </Id>
+                        <NameFile> ${FileObsPlane} </NameFile>
+                        <Weight  > ${WeightObsPlane} </Weight>
+                        <Data>  </Data>
+                   </DataObsPlane>
              </#WHEN>
 
 
@@ -468,6 +494,15 @@
 
 
         <SectionChantier>
+             <#WHEN VTEST=${WithROP}>
+                 <RappelPose>
+                     <IdOrient >    ${ROPOrient}  </IdOrient>
+                     <SigmaC>       ${ROPSigmaC}  </SigmaC>
+                     <SigmaR>       ${ROPSigmaR}  </SigmaR>
+                     <PatternApply> ${ROPPattern} </PatternApply>
+                 </RappelPose>
+             </#WHEN>
+             <NumAttrPdsNewF> ${NumAttrPdsNewF}  </NumAttrPdsNewF>
              <ExportMatrixMarket> ${ExportMatrixMarket} </ExportMatrixMarket>
              <RatioMaxDistCS> ${RatioMaxDistCS} </RatioMaxDistCS>
              <DebugVecElimTieP> ${StrDebugVecElimTieP} </DebugVecElimTieP>
@@ -488,6 +523,9 @@
              <GenereErreurOnContraineCam> false </GenereErreurOnContraineCam>
              <SauvAutom>  ${SauvAutom} </SauvAutom>
              <SauvAutomBasic>  ${DoSauvAutom} </SauvAutomBasic>
+             <#WHEN VTEST=${WithExtenZ}>
+                   <ExtensionIntervZ> ${ExtenZ} </ExtensionIntervZ>
+             </#WHEN>
         </SectionChantier>
 
         <SectionSolveur>
@@ -808,8 +846,9 @@
 
                    <#WHEN VTEST=${AllFree}>
                          <IterationsCompensation>
-                            <SectionContraintes>
+							<SectionContraintes>
                                <ContraintesCamerasInc>
+								   <PatternNameApply> ${AllFreePattern} </PatternNameApply>
                                    <Val> eAllParamLibres  </Val>
                                </ContraintesCamerasInc>
                             </SectionContraintes>
@@ -864,6 +903,12 @@
 		              <TxtRapDetaille>
 		                    <NameFile> ${RapTxt}</NameFile>
 		              </TxtRapDetaille>
+                          </#WHEN>
+
+                          <#WHEN VTEST=${WithObsPlane}>
+                              <ObsCenterInPlane>
+                                     <Id> IdObsPlane </Id>
+                              </ObsCenterInPlane>
                           </#WHEN>
 
                           <#WHEN  VTEST=${WithGCP}>

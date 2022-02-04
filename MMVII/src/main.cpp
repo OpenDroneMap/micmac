@@ -1,13 +1,41 @@
 #include "../include/MMVII_all.h"
 
-#include "ResultInstall/ResultInstall.cpp"
+namespace MMVII {
+static int SaveArgC;
+static char ** SaveArgV;
+  const std::string DirBin2007=MMVII_INSTALL_PATH;
+void ShowArgsMain()
+{
+   std::cout << "========= ARGS OF COMMAND ==========\n";
+   for (int aK=0 ; aK<SaveArgC ; aK++)
+       std::cout << SaveArgV[aK] << " ";
+   std::cout << "\n";
+}
+};
+
 using namespace MMVII;
+
 
 
 int main(int argc, char ** argv)
 {
+   SaveArgC = argc;
+   SaveArgV = argv;
+
    std::setlocale(LC_ALL, "C");
    // std::setlocale(LC_ALL, "en_US.UTF-8");
+
+   // Debug, print command
+   if (0)
+   {
+       StdOut() << "==========COMM=====   \n";
+       for (int aK=0 ; aK<argc ; aK++)
+       {
+            if (aK) StdOut() << " ";
+            StdOut() << argv[aK];
+       }
+       StdOut() << "\n";
+   }
 
    if (argc>1)
    {
@@ -19,24 +47,10 @@ int main(int argc, char ** argv)
       // Execute si match
       if (aSpec)
       {
-         // Check if a  command respects specif of documentation
-         aSpec->Check();
-         // Add this one to check  destruction with unique_ptr
-         const cMemState  aMemoState= cMemManager::CurState() ;
-         int aRes=-1;
-         {
-            // Use allocator
-            tMMVII_UnikPApli anAppli = aSpec->Alloc()(argc,argv,*aSpec);
-            // Execute
-            anAppli->InitParam();
-// std::cout << "IIInnparammm " <<   anAppli->StrOpt().V().size() << " " << anAppli->StrObl().V().size() << "\n"; getchar();
-            if (anAppli->ModeHelp())
-               aRes = EXIT_SUCCESS;
-            else
-               aRes = anAppli->Exe();
-         }
-         cMemManager::CheckRestoration(aMemoState);
-         return aRes;
+         std::vector<std::string> aVArgs;
+         for (int aK=0 ; aK<argc; aK++)
+             aVArgs.push_back(argv[aK]);
+         return aSpec->AllocExecuteDestruct(aVArgs);
       }
    }
 

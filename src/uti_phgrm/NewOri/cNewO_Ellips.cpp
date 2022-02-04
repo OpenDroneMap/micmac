@@ -150,8 +150,143 @@ void cGenGaus3D::GetDistribGaus(std::vector<Pt3dr> & aVPts,int aN1,int aN2,int a
    }
 }
 
+/*
+ *     _____
+ * P1 *     /|
+ *   /     / |
+ *  /___P2*  |
+ *  | P4x |  *P3   x - pt in the middle
+ *  |     | /      * - pts in the corners
+ *P5*_____|/
+ *
+ *
+ * */
+void cGenGaus3D::GetDistr5PointsFromVP(Pt3dr aFact1,Pt3dr aFact2,Pt3dr aFact3,std::vector<Pt3dr> & aVPts)
+{
+    // InvErrFoncRationel : probability that the fonction takes a value <-1/aMult, 1/aMult> (lim <-.5,.5>) 
+    //                      on normalised values, i.e. mean=0 and variance=0.5
+    
+	aVPts.clear();
 
-void cGenGaus3D::GetDistribGausNSym(std::vector<Pt3dr> & aVPts,int aN1,int aN2,int aN3)
+	Pt3dr aP1;
+    aP1 = mCDG + aFact1 * InvErrFoncRationel(-1*2,2+1)
+               + aFact2 * InvErrFoncRationel(1*2,2+1)
+               + aFact3 * InvErrFoncRationel(1*2,2+1); //Inv(p/q)
+    aVPts.push_back(aP1);
+
+    Pt3dr aP2;
+    aP2 = mCDG + aFact1 * InvErrFoncRationel(1*2,2+1)
+               + aFact2 * InvErrFoncRationel(-1*2,2+1)
+               + aFact3 * InvErrFoncRationel(1*2,2+1);
+    aVPts.push_back(aP2);
+
+    Pt3dr aP3;
+    aP3 = mCDG + aFact1 * InvErrFoncRationel(1*2,2+1)
+               + aFact2 * InvErrFoncRationel(1*2,2+1)
+               + aFact3 * InvErrFoncRationel(-1*2,2+1);
+    aVPts.push_back(aP3);
+
+    Pt3dr aP4;
+    aP4 = mCDG + aFact1 * InvErrFoncRationel(0,2+1)
+               + aFact2 * InvErrFoncRationel(0,2+1)
+               + aFact3 * InvErrFoncRationel(0,2+1);
+    aVPts.push_back(aP4);
+
+    Pt3dr aP5;
+    aP5 = mCDG + aFact1 * InvErrFoncRationel(-1*2,2+1)
+               + aFact2 * InvErrFoncRationel(-1*2,2+1)
+               + aFact3 * InvErrFoncRationel(-1*2,2+1);
+    aVPts.push_back(aP5);
+	//std::cout << "GetDistr5PointsFromVP ******** " << aP1 << " " << aP2 << " " << aP3 << " " << aP4 << " " << aP5 << 
+	//		     " Facs=" << aFact1 << " " << aFact2 << " " << aFact3 << "\n";
+	//std::cout << "======== InvErrFoncRationel(-1*2,2+1)=" << InvErrFoncRationel(-1*2,2+1) << ", (0,2+1)=" << InvErrFoncRationel(0,2+1) << ", (1*2,2+1)=" << InvErrFoncRationel(1*2,2+1) << "\n"; 
+}
+
+
+/* Recursive function that :
+ * - in the firt place genreates ficticious points from eigenvectors and eigen vallues
+ * - secondly, verifies that the eigenvalues calculated on the new points are equal to old eigen values
+ * - corrects the new eigenvalues with a FCorrect
+ *
+ * RedFac is used to fit points inside the image if they fall outside
+ *
+ * */
+void cGenGaus3D::GetDistr5Points(std::vector<Pt3dr> & aVPts,double aRedFac)
+{
+
+
+	int aNbPts = int(aVPts.size());
+
+	if (aNbPts)
+	{
+
+		double aFCorrect1 = 0;
+		double aFCorrect2 = 0;
+		double aFCorrect3 = 0;
+		
+		/* Apply a scaling factor to fit points in the images */
+		if (aRedFac!=1.0)
+		{
+	 	   aFCorrect1 = aRedFac;
+	 	   aFCorrect2 = aRedFac;
+	 	   aFCorrect3 = aRedFac;
+
+		}
+		/* Normalize the eigen values to fit the eigen values of the initial ellipse */
+		else
+		{
+	        cXml_Elips3D  anEl;
+         
+            RazEllips(anEl);
+            for (int aK=0 ; aK<aNbPts ; aK++)
+            {
+                 AddEllips(anEl,aVPts.at(aK),1.0);
+            }
+            NormEllips(anEl);
+         
+            cGenGaus3D aGG1(anEl);
+         
+         
+	 	   aFCorrect1 = mVP[0]/aGG1.ValP(0);
+	 	   aFCorrect2 = mVP[1]/aGG1.ValP(1);
+	 	   aFCorrect3 = mVP[2]/aGG1.ValP(2);
+
+		}
+
+        Pt3dr aFact1 =  mVecP[0] * (aFCorrect1 * mVP[0]);
+        Pt3dr aFact2 =  mVecP[1] * (aFCorrect2 * mVP[1]);
+        Pt3dr aFact3 =  mVecP[2] * (aFCorrect3 * mVP[2]);
+     
+	 	GetDistr5PointsFromVP(aFact1,aFact2,aFact3,aVPts);
+	 	
+		//std::cout << "aRedFac=" << aRedFac << ", val propre=" << aFCorrect1 << " " << aFCorrect2 << " " << aFCorrect3 << "\n";
+	 	//std::cout << "vec propre2=" << mVecP[0] << " " << mVecP[1]  << " " << mVecP[2] << "\n";
+	 	//std::cout << "           " << aGG1.VecP(0) << " " << aGG1.VecP(1) << " " << aGG1.VecP(2) << "\n";
+
+	}
+	/* The generation of the 3D points. 
+	 * First pure generation with no scaling, no normalisation. 
+	 * Then apply normalisation */
+	else
+	{
+    
+        //
+        Pt3dr aFact1 =  mVecP[0] * mVP[0];
+        Pt3dr aFact2 =  mVecP[1] * mVP[1];
+        Pt3dr aFact3 =  mVecP[2] * mVP[2];
+
+	 	//std::cout << "vec propre1=" << mVecP[0] << " " << mVecP[1]  << " " << mVecP[2] << "\n" 
+		//		  << mVP[0] << " " << mVP[1] << " " << mVP[2] << "\n";
+    
+		GetDistr5PointsFromVP(aFact1,aFact2,aFact3,aVPts);
+    
+		/* Normalise */
+		GetDistr5Points(aVPts);
+	}
+}
+
+
+void cGenGaus3D::GetDistribGausNSym(std::vector<Pt3dr> & aVPts,int aN1,int aN2,int aN3,bool aAddPts)
 {
 
     ELISE_ASSERT( (aN1>1) && (aN2>1) && (aN3>1) ,"cGenGaus3D::GetDistribGausConf the N parameters must be bigger than 1");
@@ -205,10 +340,76 @@ void cGenGaus3D::GetDistribGausNSym(std::vector<Pt3dr> & aVPts,int aN1,int aN2,i
         }
     }
 
+    /* For now the AddPts will add the CDG; later possibly more options
+       - the goal is to test the CDG with the minimal no of Pts, i.e. [2,2,2],
+         and a pt/pts in the center */
+    if (aAddPts)
+    {
+        aVPts.push_back(mCDG);
+    }
+
+}
+
+void cGenGaus3D::GetDistribGausRand(std::vector<Pt3dr> & aVPts,int aN)
+{
+    aVPts.clear();
+    
+    int aMult = 10;//no of bins discretising the sampling in the ellipse
+
+    //to be revisited 0.165 = 0.33*0.5
+    Pt3dr aFact1 = mVecP[0] * (FactCorrectif(0.165*aN*aMult) * mVP[0]);
+    Pt3dr aFact2 = mVecP[1] * (FactCorrectif(0.165*aN*aMult) * mVP[1]);
+    Pt3dr aFact3 = mVecP[2] * (FactCorrectif(0.165*aN*aMult) * mVP[2]);
+ 
+    //cElRanGen aRG;
+    vector<Pt3dr> aVPRand;
+    
+    //ResetNRrand();
+    NRrandom3InitOfTime();
+
+    //collect random points and get the centroid
+    Pt3dr aMoy(0,0,0);
+    for (int aK=0; aK<aN; aK++)
+    {
+
+        double aK1 = NRrandom3();
+        double aK2 = NRrandom3();
+        double aK3 = NRrandom3();
+    
+        aVPRand.push_back (Pt3dr(aK1,aK2,aK3));
+
+        aMoy.x += aK1;
+        aMoy.y += aK2;
+        aMoy.z += aK3;
+
+    }
+    aMoy.x /= aN;
+    aMoy.y /= aN;
+    aMoy.z /= aN;
+
+
+    for (int aK=0; aK<aN; aK++)
+    {
+        int aK1I = int( (aVPRand.at(aK).x -aMoy.x) *aMult);
+        int aK2I = int( (aVPRand.at(aK).y -aMoy.y) *aMult);
+        int aK3I = int( (aVPRand.at(aK).z -aMoy.z) *aMult);
+
+        std::cout << "randommmmmm : " << aK1I << " " << aK2I << " " << aK3I <<  "\n";
+
+        Pt3dr aP  =   mCDG 
+                      + aFact1 * InvErrFoncRationel(2*aK1I,aMult)
+                      + aFact2 * InvErrFoncRationel(2*aK2I,aMult)
+                      + aFact3 * InvErrFoncRationel(2*aK3I,aMult);
+
+
+        aVPts.push_back(aP);
+
+    }
+
 }
 
 void cGenGaus2D::GetDistribGaus(std::vector<Pt2dr> & aVPts,int aN1,int aN2)
-{
+ {
    aVPts.clear();
    Pt2dr aFact1 = mVecP[0] * (FactCorrectif(aN1) * mVP[0]);
    Pt2dr aFact2 = mVecP[1] * (FactCorrectif(aN2) * mVP[1]);
@@ -225,6 +426,32 @@ void cGenGaus2D::GetDistribGaus(std::vector<Pt2dr> & aVPts,int aN1,int aN2)
    }
 }
 
+void cGenGaus2D::GetDistr3Points(std::vector<Pt2dr> & aVPts)
+{
+    aVPts.clear();
+
+    int aMult=2;
+
+    //
+    Pt2dr aFact1 =  mVecP[0] * (FactCorrectif(aMult) * mVP[0]);
+    Pt2dr aFact2 =  mVecP[1] * (FactCorrectif(aMult) * mVP[1]);
+
+
+    std::cout << "mVecP[0]=" << mVecP[0] << ", mVP[0]=" << mVP[0] << "\n";
+    std::cout << "mVecP[1]=" << mVecP[1] << ", mVP[1]=" << mVP[1] << "\n";
+
+    getchar();
+
+    // InvErrFoncRationel : probability that the fonction takes a value <-1/aMult, 1/aMult>
+    Pt2dr aP;
+    aP = mCDG + aFact1 * InvErrFoncRationel(1,aMult)
+              + aFact2 * InvErrFoncRationel(1,aMult); //Inv(p/q)
+
+    std::cout << "aFact1=" << aFact1 << " InvErrFoncRationel(1,aMult)=" << InvErrFoncRationel(1,aMult) << "\n aFact2=" << aFact2 << "\n";
+
+    
+	
+}
 
 const double & cGenGaus3D::ValP(int aK) const { return mVP[aK]; }
 const Pt3dr &  cGenGaus3D::VecP(int aK) const { return mVecP[aK]; }
@@ -356,12 +583,13 @@ void NormEllips(cXml_Elips3D & anEl)
    anEl.CDG() = anEl.CDG() / aPds;
    Pt3dr aCdg = anEl.CDG();
 
-   anEl.Sxx() = anEl.Sxx() / aPds - aCdg.x * aCdg.x;
-   anEl.Syy() = anEl.Syy() / aPds - aCdg.y * aCdg.y;
-   anEl.Szz() = anEl.Szz() / aPds - aCdg.z * aCdg.z;
-   anEl.Sxy() = anEl.Sxy() / aPds - aCdg.x * aCdg.y;
-   anEl.Sxz() = anEl.Sxz() / aPds - aCdg.x * aCdg.z;
-   anEl.Syz() = anEl.Syz() / aPds - aCdg.y * aCdg.z;
+   anEl.Sxx() = anEl.Sxx() / (aPds) - aCdg.x * aCdg.x;
+   anEl.Syy() = anEl.Syy() / (aPds) - aCdg.y * aCdg.y;
+   anEl.Szz() = anEl.Szz() / (aPds) - aCdg.z * aCdg.z;
+   anEl.Sxy() = anEl.Sxy() / (aPds) - aCdg.x * aCdg.y;
+   anEl.Sxz() = anEl.Sxz() / (aPds) - aCdg.x * aCdg.z;
+   anEl.Syz() = anEl.Syz() / (aPds) - aCdg.y * aCdg.z;
+
 }
 void NormEllips(cXml_Elips2D & anEl)
 {
@@ -371,13 +599,52 @@ void NormEllips(cXml_Elips2D & anEl)
    anEl.CDG() = anEl.CDG() / aPds;
    Pt2dr aCdg = anEl.CDG();
 
-   anEl.Sxx() = anEl.Sxx() / aPds - aCdg.x * aCdg.x;
-   anEl.Syy() = anEl.Syy() / aPds - aCdg.y * aCdg.y;
-   anEl.Sxy() = anEl.Sxy() / aPds - aCdg.x * aCdg.y;
+   anEl.Sxx() = anEl.Sxx() / (aPds) - aCdg.x * aCdg.x;
+   anEl.Syy() = anEl.Syy() / (aPds) - aCdg.y * aCdg.y;
+   anEl.Sxy() = anEl.Sxy() / (aPds) - aCdg.x * aCdg.y;
+}
+
+void TestEllips_3D()
+{
+
+	std::vector<Pt3dr> aPVec;
+
+	std::string aFName = "/home/er/Documents/d_development/structureless_BA/ellipses/demo/Im_70-71-72.txt";
+    ELISE_fp aFIn(aFName.c_str(),ELISE_fp::READ);
+    char * aLine;
+
+    while ((aLine = aFIn.std_fgets()))
+    {
+		 Pt3dr aP1;
+         int aNb=sscanf(aLine,"%lf %lf %lf",&aP1.x , &aP1.y, &aP1.z);
+         ELISE_ASSERT(aNb==3,"Could not read 3 double values");
+
+         //std::cout << aP1 << " " << "\n";
+
+		 aPVec.push_back(aP1);
+    }
+
+	cXml_Elips3D aEl;
+    RazEllips(aEl);
+	for (auto Pt : aPVec)
+	{
+		AddEllips(aEl,Pt,1.0);
+	}
+	NormEllips(aEl);
+
+	std::cout << "Ellipsoid: " << aEl.Sxx() << " " << aEl.Syy() << " " << aEl.Szz() << " " 
+			                   << aEl.Sxy() << " " << aEl.Sxz() << " " << aEl.Syz() << "\n";
+
+	cGenGaus3D aGG(aEl);
+
+	std::cout << "EigVal: \n" << aGG.ValP(0) << " " << aGG.ValP(1) << " " << aGG.ValP(2) << "\n";
+	std::cout << "EigVec: \n" << aGG.VecP(0) << "\n" << aGG.VecP(1) << "\n" << aGG.VecP(2) << "\n";
+	std::cout << "CDG: "    << aGG.CDG() << "\n";
+	
 }
 
 
-void TestEllips_3D()
+void TestEllips_3D_()
 {
     while (1)
     {

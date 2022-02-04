@@ -32,6 +32,7 @@ typedef enum
   eTVIR_ACR0,
   eTVIR_ACGT,
   eTVIR_ACGR,
+  eTVIR_LogPol,
   eTVIR_NoLabel
 } eTypeVecInvarR;
 void xml_init(eTypeVecInvarR & aVal,cElXMLTree * aTree);
@@ -121,6 +122,50 @@ void  BinaryDumpInFile(ELISE_fp &,const cPtSc &);
 void  BinaryUnDumpFromFile(cPtSc &,ELISE_fp &);
 
 std::string  Mangling( cPtSc *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_TestDMP
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_TestDMP & anObj,cElXMLTree * aTree);
+
+
+        Im2D_INT2 & PxMin();
+        const Im2D_INT2 & PxMin()const ;
+
+        Im2D_INT2 & PxMax();
+        const Im2D_INT2 & PxMax()const ;
+
+        Im2D_INT4 & ImCpt();
+        const Im2D_INT4 & ImCpt()const ;
+
+        Im2D_U_INT2 & DataIm();
+        const Im2D_U_INT2 & DataIm()const ;
+
+        double & StepPx();
+        const double & StepPx()const ;
+
+        double & DynPx();
+        const double & DynPx()const ;
+    private:
+        Im2D_INT2 mPxMin;
+        Im2D_INT2 mPxMax;
+        Im2D_INT4 mImCpt;
+        Im2D_U_INT2 mDataIm;
+        double mStepPx;
+        double mDynPx;
+};
+cElXMLTree * ToXMLTree(const cXml_TestDMP &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_TestDMP &);
+
+void  BinaryUnDumpFromFile(cXml_TestDMP &,ELISE_fp &);
+
+std::string  Mangling( cXml_TestDMP *);
 
 /******************************************************/
 /******************************************************/
@@ -947,6 +992,142 @@ void  BinaryDumpInFile(ELISE_fp &,const cXmlAimeParamApprentissage &);
 void  BinaryUnDumpFromFile(cXmlAimeParamApprentissage &,ELISE_fp &);
 
 std::string  Mangling( cXmlAimeParamApprentissage *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml2007Pt
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml2007Pt & anObj,cElXMLTree * aTree);
+
+
+        Pt2dr & PtInit();
+        const Pt2dr & PtInit()const ;
+
+        Pt2dr & PtAff();
+        const Pt2dr & PtAff()const ;
+
+        int & Id();
+        const int & Id()const ;
+
+        int & NumOct();
+        const int & NumOct()const ;
+
+        int & NumIm();
+        const int & NumIm()const ;
+
+        double & ScaleInO();
+        const double & ScaleInO()const ;
+
+        double & ScaleAbs();
+        const double & ScaleAbs()const ;
+
+        double & Score();
+        const double & Score()const ;
+
+        double & ScoreRel();
+        const double & ScoreRel()const ;
+
+        std::vector<double> & VectRho();
+        const std::vector<double> & VectRho()const ;
+
+        std::vector<double> & VectDir();
+        const std::vector<double> & VectDir()const ;
+
+        double & Var();
+        const double & Var()const ;
+
+        double & AutoCor();
+        const double & AutoCor()const ;
+
+        int & NumChAC();
+        const int & NumChAC()const ;
+
+        bool & OKAc();
+        const bool & OKAc()const ;
+
+        bool & OKLP();
+        const bool & OKLP()const ;
+
+        bool & SFSelected();
+        const bool & SFSelected()const ;
+
+        bool & Stable();
+        const bool & Stable()const ;
+
+        bool & ChgMaj();
+        const bool & ChgMaj()const ;
+
+        Im2D_U_INT1 & ImLP();
+        const Im2D_U_INT1 & ImLP()const ;
+    private:
+        Pt2dr mPtInit;
+        Pt2dr mPtAff;
+        int mId;
+        int mNumOct;
+        int mNumIm;
+        double mScaleInO;
+        double mScaleAbs;
+        double mScore;
+        double mScoreRel;
+        std::vector<double> mVectRho;
+        std::vector<double> mVectDir;
+        double mVar;
+        double mAutoCor;
+        int mNumChAC;
+        bool mOKAc;
+        bool mOKLP;
+        bool mSFSelected;
+        bool mStable;
+        bool mChgMaj;
+        Im2D_U_INT1 mImLP;
+};
+cElXMLTree * ToXMLTree(const cXml2007Pt &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml2007Pt &);
+
+void  BinaryUnDumpFromFile(cXml2007Pt &,ELISE_fp &);
+
+std::string  Mangling( cXml2007Pt *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml2007SetPtOneType
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml2007SetPtOneType & anObj,cElXMLTree * aTree);
+
+
+        std::vector< cXml2007Pt > & Pts();
+        const std::vector< cXml2007Pt > & Pts()const ;
+
+        bool & IsMax();
+        const bool & IsMax()const ;
+
+        int & TypePt();
+        const int & TypePt()const ;
+
+        std::string & NameTypePt();
+        const std::string & NameTypePt()const ;
+    private:
+        std::vector< cXml2007Pt > mPts;
+        bool mIsMax;
+        int mTypePt;
+        std::string mNameTypePt;
+};
+cElXMLTree * ToXMLTree(const cXml2007SetPtOneType &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml2007SetPtOneType &);
+
+void  BinaryUnDumpFromFile(cXml2007SetPtOneType &,ELISE_fp &);
+
+std::string  Mangling( cXml2007SetPtOneType *);
 
 /******************************************************/
 /******************************************************/

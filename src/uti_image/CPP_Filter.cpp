@@ -367,7 +367,7 @@ static Fonc_Num FOperBin(cFilterImPolI & aFIPI,const cArgFilterPolI & anArg)
     return anOper(anArg.mVIn.at(0),anArg.mVIn.at(1));
 }
 
-static std::string TheStrOpB="-|/|pow|>=|>|<|<=|==|!=|&|&&|(\\|)|(\\|\\|)|\\^|%|mod|>>|<<";
+static std::string TheStrOpB="-|/|pow|>=|>|<|<=|==|!=|&|&&|(\\|)|(\\|\\|)|\\^|%|mod|>>|<<|f1f2bn";
 static cFilterImPolI  OperBin(FOperBin,2,2,0,0,TheStrOpB,false,"pow F1 F2");
   //----------------------------------------------------------------
 
@@ -378,7 +378,7 @@ static Fonc_Num FOperUn(cFilterImPolI & aFIPI,const cArgFilterPolI & anArg)
     return anOper(anArg.mVIn.at(0));
 }
 
-static std::string TheStrOpU="u-|~|!|signed_frac|ecart_frac|cos|sin|tan|log|log2|exp|square|cube|abs|atan|sqrt|erfcc";
+static std::string TheStrOpU="u-|~|!|signed_frac|ecart_frac|cos|sin|tan|log|log2|exp|square|cube|abs|atan|sqrt|erfcc|isbadnum";
 static cFilterImPolI  OperUn(FOperUn,1,1,0,0,TheStrOpU,false,"cos F");
 
 
@@ -388,7 +388,7 @@ static Fonc_Num FTif(cFilterImPolI &,const cArgFilterPolI & anArg)
    return  Tiff_Im::StdConvGen(anArg.mNameIn,-1,true).in_proj();
 }
 // static cFilterImPolI  OperTif(FTif,0,0,0,0,".*\\.(tif|tiff|Tif|Tiff|TIF|TIFF|jpg|jpeg|Jpg|Jpeg|JPG|JPEG)",false);
-static cFilterImPolI  OperTif(FTif,0,0,0,0,".*\\.(tif|tiff|jpg|jpeg|cr2|arw|png)",false,"MyFile.tif");
+static cFilterImPolI  OperTif(FTif,0,0,0,0,".*\\.(tif|tiff|jpg|jpeg|cr2|arw|png|pfm|pgm)",false,"MyFile.tif");
 
   //----------------------------------------------------------------
 
@@ -414,7 +414,7 @@ static Fonc_Num FDoubleCste(cFilterImPolI &,const cArgFilterPolI & anArg)
 {
    return   Fonc_Num(ToDouble(anArg.mNameIn));
 }
-static cFilterImPolI  OperDoubleCste(FDoubleCste,0,0,0,0,"-?[0-9]+\\.[0-9]*",false,"3.14");
+static cFilterImPolI  OperDoubleCste(FDoubleCste,0,0,0,0,"-?[0-9]+\\.[0-9]*([eE]-?[0-9]+)?",false,"3.14");
 
 static Fonc_Num FIntCste(cFilterImPolI &,const cArgFilterPolI & anArg)
 {
@@ -898,6 +898,10 @@ cResFilterPolI RecParseStrFNPolI(tCPtr & aStr,cCtxtFoncPolI * aCtx)
 
             return  cResFilterPolI(aPolI.mCalc(aPolI,anArg),anArg.mBox);
         }
+        else
+        {
+             // std::cout << "SYMB NOT MATCHED= " << aIdSymb << "\n";
+        }
     }
 
     std::cout << "For symb=[" << aSymb << "]\n";
@@ -949,6 +953,11 @@ int Nikrup_main(int argc,char ** argv)
 
     TheActionOnHelp = NirupActionOnHelp;
 
+/*
+for (int ak=0 ; ak<argc ; ak++)
+    std::cout << "NNnn [" << argv[ak] << "]\n";
+*/
+
     ElInitArgMain
     (
          argc,argv,
@@ -998,13 +1007,17 @@ int Nikrup_main(int argc,char ** argv)
           if (aNbOut>1)
              aNameK = "Nkrp-" + ToString(aK) + aNameOut;
 
+          L_Arg_Opt_Tiff aL;
+          aL = aL+Arg_Tiff(Tiff_Im::ANoStrip());
+
           Tiff_Im aTifOut
                  (
                     aNameK.c_str(),
                     aSzOut,
                     aType,
                     Tiff_Im::No_Compr,
-                    aPIT
+                    aPIT,
+                    aL
                  );
           Output anOutK = aTifOut.out();
 
@@ -1158,11 +1171,15 @@ int Contrast_main(int argc,char ** argv)
 int TournIm_main(int argc,char ** argv)
 {
     std::string aNameIm;
+    std::string aNameOut;
+    int  aNumGeom = 1;
     ElInitArgMain
     (
          argc,argv,
          LArgMain()  << EAMC(aNameIm,"Name of Input image", eSAM_IsExistFile),
          LArgMain()
+                     << EAM(aNumGeom,"NumGeom",true,"0=>Id,1=>90(def), 2=>180,3=>270,[4-7]=>Sym", eSAM_NoInit)
+                     << EAM(aNameOut,"Out",true,"Destination")
     );
 
     Tiff_Im aTif =  Tiff_Im::StdConvGen(aNameIm,-1,true);
@@ -1170,20 +1187,64 @@ int TournIm_main(int argc,char ** argv)
     Pt2di aSz = aVIm[0]->sz();
     std::cout << "SZ IN " << aSz << "\n";
 
-    std::string aNameOut ="T90-"+ aNameIm;
+    Fonc_Num aFTrans = Virgule(FY,aSz.y-1-FX);
+    std::string aPref = "T90-";
+
+    if (aNumGeom==0) 
+    {
+        aPref = "T0-";
+        aFTrans = Virgule(FX,FY);
+    }
+    else if (aNumGeom==1) 
+    {
+        aFTrans = Virgule(FY,aSz.y-1-FX);
+    }
+    else if (aNumGeom==2)
+    {
+        aPref = "T180-";
+        aFTrans = Virgule(aSz.x-1-FX,aSz.y-1-FY);
+    }
+    else if (aNumGeom==3)
+    {
+        aPref = "T270-";
+        aFTrans = Virgule(aSz.x-1-FY,FX);
+    }
+    else if (aNumGeom==4) 
+    {
+        aPref = "SymX-";
+        aFTrans = Virgule(aSz.x-1-FX,FY);
+    }
+    else if (aNumGeom==6) 
+    {
+        aPref = "SymY-";
+        aFTrans = Virgule(FX,aSz.y-1-FY);
+    }
+    else
+    {
+        ELISE_ASSERT(false,"Unhandled value for NumGeom");
+    }
+
+    if (!EAMIsInit(&aNameOut))
+        aNameOut = DirOfFile(aNameIm) + aPref+ StdPrefix(NameWithoutDir(aNameIm))+".tif";
+
+    L_Arg_Opt_Tiff aLarg;
+    aLarg = aLarg+  Arg_Tiff(Tiff_Im::ANoStrip());
     Tiff_Im aTifOut
             (
                 aNameOut.c_str(),
-                Pt2di(aSz.y,aSz.x),
+                ((aNumGeom%2)==1)  ? Pt2di(aSz.y,aSz.x) : Pt2di(aSz.x,aSz.y),
                 aTif.type_el(),
                 Tiff_Im::No_Compr,
-                aTif.phot_interp()
+                aTif.phot_interp(),
+                aLarg
             );
     std::cout << "SZ OUT " << aTifOut.sz() << "\n";
 
     Fonc_Num aF;
     int aKIm=0;
-    Fonc_Num aFTrans = Virgule(FY,aSz.y-1-FX);
+
+
+
     // aFTrans  = Virgule(FY,aSz.y-1-FX);
     for (auto aI : aVIm)
     {
@@ -1192,6 +1253,7 @@ int TournIm_main(int argc,char ** argv)
         aF = (aKIm) ? Virgule(aF,aNewF) : aNewF;
         aKIm++;
     }
+/*
     int aX0,aX1,aY0,aY1;
     ELISE_COPY(
          aTifOut.all_pts(),
@@ -1199,10 +1261,76 @@ int TournIm_main(int argc,char ** argv)
          Virgule(VMin(aX0)|VMax(aX1),VMin(aY0)|VMax(aY1))
     );
     std::cout << "XXX " << aX0 << " " << aX1 << ";; Y " << aY0 << " " << aY1 << "\n";
+*/
     ELISE_COPY(aTifOut.all_pts(),aF,aTifOut.out());
 
     return EXIT_SUCCESS;
 }
+
+/**********  Test a bunch of idea about filters *******/
+
+int DivFilters_main(int argc,char ** argv)
+{
+    std::string aNameIn;
+    std::vector<std::string> aParamSupMoinsInf;
+
+    ElInitArgMain
+    (
+         argc,argv,
+         LArgMain()  << EAMC(aNameIn,"Name of Input image", eSAM_IsExistFile),
+         LArgMain()  << EAM(aParamSupMoinsInf,"SMI",true,"Sup Moins Inf [SzW]", eSAM_NoInit)
+    );
+
+    if (!MMVisualMode)
+    {
+        Im2D<float,double> aIm=  Im2D<float,double>::FromFileStd(aNameIn);
+        TIm2D<float,double>  aDIm(aIm);
+        Pt2di aSzIm = aIm.sz();
+
+        if (EAMIsInit(&aParamSupMoinsInf))
+        {
+             Im2D<float,double> aImNbInfSup(aSzIm.x,aSzIm.y);
+             int aSzW;  FromString(aSzW,aParamSupMoinsInf.at(0));
+             Pt2di aP;
+             for (aP.y=aSzW ; aP.y<aSzIm.y-aSzW  ; aP.y++)
+             {
+                 for (aP.x=aSzW ; aP.x<aSzIm.x-aSzW  ; aP.x++)
+                 {
+                      int aNbSup=0;
+                      int aNbInf=0;
+                      float aV0 = aDIm.get(aP);
+                      for (int aDy=-aSzW; aDy<=aSzW ; aDy++)
+                      {
+                          for (int aDx=-aSzW; aDx<=aSzW ; aDx++)
+                          {
+                              if ((aDx!=0) || (aDy!=0))
+                              {
+                                  Pt2di aDP(aDx,aDy);
+                                  Pt2di aQ = aP+aDP;
+                                  float aV1 = aDIm.get(aQ) + aDx/10.0 + aDy/100.0;
+                                  if (aV1>aV0)
+                                  {
+                                      aNbSup++;
+                                  }
+                                  else
+                                  {
+                                      aNbInf++;
+                                  }
+                              }
+                          }
+                      }
+                      double aProp = (aNbInf-aNbSup)/double(aNbInf+aNbSup);
+                      double V5 = (aProp>0) ? 0.5 : -0.5;
+                      aImNbInfSup.SetR(aP,std::abs(aProp-V5));
+                 }
+             }
+             Tiff_Im::CreateFromIm(aImNbInfSup,"InfSup-"+StdPrefix(aNameIn)+".tif");
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
+
 
 
 /*Footer-MicMac-eLiSe-25/06/2007

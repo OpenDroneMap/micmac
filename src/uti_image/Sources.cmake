@@ -32,6 +32,7 @@ list(APPEND uti_image_Src_Files
     ${UTI_IMAGE_DIR}/CPP_Undist.cpp
     ${UTI_IMAGE_DIR}/CPP_CoherEpi.cpp
     ${UTI_IMAGE_DIR}/QualDepthMap.cpp
+    ${UTI_IMAGE_DIR}/CPP_CalcImScale.cpp
     ${UTI_IMAGE_DIR}/CPP_CmpIm.cpp
     ${UTI_IMAGE_DIR}/CPP_EstimFlatField.cpp
     ${UTI_IMAGE_DIR}/CPP_Dequant.cpp
@@ -65,7 +66,8 @@ list(APPEND uti_image_Src_Files
     ${UTI_IMAGE_DIR}/CPP_SimuLib1.cpp
     ${UTI_IMAGE_DIR}/CPP_SimuLib2.cpp
     ${UTI_IMAGE_DIR}/CPP_SimuLib3.cpp
-    ${UTI_IMAGE_DIR}/CPP_SupMntIm.cpp)
+    ${UTI_IMAGE_DIR}/CPP_SupMntIm.cpp
+    ${UTI_IMAGE_DIR}/CPP_SiftExport.cpp)
 
 source_group(${SrcGrp_Uti_Image}\\outils FILES ${uti_image_Src_Files})
 source_group(${SrcGrp_Uti_Image}\\outils\\SIFT FILES ${uti_image_Sift_Src_Files})

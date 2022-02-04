@@ -1202,6 +1202,14 @@ class ElDistortionPolynomiale : public ElDistortion22_Gen
 class EpipolaireCoordinate : public ElDistortion22_Gen
 {
     public :
+         void SaveOrientEpip
+              (
+                  const std::string &                anOri,
+                  cInterfChantierNameManipulateur *  anICNM,
+                  const std::string &                aNameIm,
+                  const std::string &                aNameOther
+               ) const;
+
 
         // Lorsque aParal ballaye R, on obtient
         // la courbe epipolaire passant par aP
@@ -1230,6 +1238,11 @@ class EpipolaireCoordinate : public ElDistortion22_Gen
         //     P ->  aChSacle * Pol(P/aChSacle)
              virtual EpipolaireCoordinate *
              MapingChScale(REAL aChSacle) const = 0;
+	     // Def => fatal error
+	     virtual void  XFitHom(const ElPackHomologue &,bool aL2,EpipolaireCoordinate *);
+	     virtual bool  HasXFitHom() const;
+	     virtual std::vector<double>  ParamFitHom() const;
+
 
              // Fait heriter les parametre globaux aP0, aDirX, aTrFin
                void HeriteChScale(EpipolaireCoordinate &,REAL aChSacle);
@@ -1335,6 +1348,11 @@ class PolynomialEpipolaireCoordinate : public EpipolaireCoordinate
               EpipolaireCoordinate * MapingChScale(REAL aChSacle) const;
               PolynomialEpipolaireCoordinate * PolMapingChScale(REAL aChSacle) const;
 
+	      // Create new Pol, fixing mC0.., so to mimimize the global paralax
+	      void  XFitHom(const ElPackHomologue &,bool aL2,EpipolaireCoordinate *) override;
+	      bool  HasXFitHom() const override;
+	      std::vector<double>  ParamFitHom() const override;
+
       private :
 
           INT DeltaDegre() const;
@@ -1345,12 +1363,29 @@ class PolynomialEpipolaireCoordinate : public EpipolaireCoordinate
 
           Pt2dr ToCoordEpipol(Pt2dr aPInit) const;
           Pt2dr ToCoordInit(Pt2dr aPEpi) const;
+
+	  //  X' = (mNum0 + mNumx X + mNumy Y) / (1 + mDenx X + mDeny Y)
+	  //  X  = 
+	  double mNum0;
+	  double mNumx;
+	  double mNumy;
+	  double mDenx;
+	  double mDeny;
+	  bool   mCorCalc;
 };
 
 
 class CpleEpipolaireCoord
 {
     public :
+         void SaveOrientCpleEpip
+              (
+                  const std::string &                anOri,
+                  cInterfChantierNameManipulateur *  anICNM,
+                  const std::string &                aName1,
+                  const std::string &                aName2
+               ) const;
+
 
             static CpleEpipolaireCoord * EpipolaireNoDist
                    (Pt2dr aPHom1,Pt2dr aPHom2,Pt2dr aDir1,Pt2dr aDir2);
@@ -1362,7 +1397,8 @@ class CpleEpipolaireCoord
                                                 const ElPackHomologue &,
                                                 INT   aDegre,
                                                 Pt2dr aDir1,
-                                                Pt2dr aDir2
+                                                Pt2dr aDir2,
+                                                int   aDeltaDeg=2
                                         );
             static CpleEpipolaireCoord * PolynomialFromHomologue
                                         (
@@ -1371,7 +1407,8 @@ class CpleEpipolaireCoord
                                                 const ElPackHomologue & lHL2,
                                                 INT   aDegreL2,
                                                 Pt2dr aDir1,
-                                                Pt2dr aDir2
+                                                Pt2dr aDir2,
+                                                int   aDeltaDeg=2
                                         );
 
             static CpleEpipolaireCoord * PolynomialFromHomologue
@@ -1382,7 +1419,8 @@ class CpleEpipolaireCoord
                                                 const ElPackHomologue &,
                                                 INT   aDegre,
                                                 Pt2dr aDir1,
-                                                Pt2dr aDir2
+                                                Pt2dr aDir2,
+                                                int   aDeltaDeg=2
                                         );
 
 
@@ -1414,8 +1452,10 @@ class CpleEpipolaireCoord
                                           );
 
             ~CpleEpipolaireCoord();
-            EpipolaireCoordinate & EPI1();
-            EpipolaireCoordinate & EPI2();
+            const EpipolaireCoordinate & EPI1() const;
+            const EpipolaireCoordinate & EPI2() const;
+            EpipolaireCoordinate & EPI1() ;
+            EpipolaireCoordinate & EPI2() ;
 
             Pt2dr Hom12(Pt2dr,Pt2dr aParalaxe); // x=> paralaxe, y variation de colonne
             Pt2dr Hom12(Pt2dr,REAL aParalaxe);
@@ -1684,7 +1724,7 @@ class ElCamera : public cCapture3D
          cVerifOrient MakeVerif( int aNbVerif,double aProf,const char *,const Pt3di  * aNbDeterm=0) const;
          cOrientationConique  StdExportCalibGlob(bool Matr) const;
          cOrientationConique  StdExportCalibGlob() const;
-         std::string StdExport2File(cInterfChantierNameManipulateur *,const std::string & aDirOri,const std::string & aNameIm);  // Test -> Ori-R
+         std::string StdExport2File(cInterfChantierNameManipulateur *,const std::string & aDirOri,const std::string & aNameIm,const std::string & aFileInterne = "");  // Test -> Ori-R
 
       virtual  Pt3dr ImEtProf2Terrain(const Pt2dr & aP,double aZ) const = 0;
       virtual  Pt3dr NoDistImEtProf2Terrain(const Pt2dr & aP,double aZ) const = 0;
@@ -3594,6 +3634,9 @@ std::vector<ElRotation3D> OrientTomasiKanade
                              double              aPrecCible,
                              std::vector<ElRotation3D> * aVRotInit
                           );
+
+// Fix a global variable,  dirty !!!!
+void SetExtensionIntervZInApero(const double);
 
 #endif // !  _ELISE_GENERAL_PHOTOGRAM_H
 

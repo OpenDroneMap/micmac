@@ -102,7 +102,7 @@ bool CmpPtrPEW(const cOneEntryWalkMan * anE1,const cOneEntryWalkMan * anE2)
 class cAppli_Walkman : public cMMVII_Appli
 {
      public :
-        cAppli_Walkman(int argc,char** argv,const cSpecMMVII_Appli &);
+        cAppli_Walkman(const std::vector<std::string> &  aVArgs,const cSpecMMVII_Appli &);
         int Exe() override;
         cCollecSpecArg2007 & ArgObl(cCollecSpecArg2007 & anArgObl) override;
         cCollecSpecArg2007 & ArgOpt(cCollecSpecArg2007 & anArgOpt) override;
@@ -129,7 +129,7 @@ cCollecSpecArg2007 & cAppli_Walkman::ArgOpt(cCollecSpecArg2007 & anArgOpt)
 {
    return 
       anArgOpt
-         << AOpt2007(mPat,"Pat","Pattern (regex), def=.*\\.mp3",{})
+         << AOpt2007(mPat,"Pat","Pattern (regex), def=.*\\.mp3",{eTA2007::HDV})
    ;
 }
 
@@ -137,8 +137,8 @@ cCollecSpecArg2007 & cAppli_Walkman::ArgOpt(cCollecSpecArg2007 & anArgOpt)
 
 
 
-cAppli_Walkman::cAppli_Walkman(int argc,char** argv,const cSpecMMVII_Appli & aSpec) :
-  cMMVII_Appli (argc,argv,aSpec),
+cAppli_Walkman::cAppli_Walkman(const std::vector<std::string> &  aVArgs,const cSpecMMVII_Appli & aSpec) :
+  cMMVII_Appli (aVArgs,aSpec),
   mPat         (".*\\.mp3"),
   mNameSauv    ("Wakman.xml")
 {
@@ -152,10 +152,10 @@ int cAppli_Walkman::Exe()
 {
    cSaveWalkman aSW;
    ReadFromFileWithDef(aSW,mDirProject+mNameSauv);
-   // std::vector<std::string> aVN = RecGetFilesFromDir(mDirProject,BoostAllocRegex(mPat),0,10);
+   // std::vector<std::string> aVN = RecGetFilesFromDir(mDirProject,AllocRegex(mPat),0,10);
 
    // Create mMapE from file read on folder
-   for (const auto & aName :  RecGetFilesFromDir(mDirProject,BoostAllocRegex(mPat),0,10))
+   for (const auto & aName :  RecGetFilesFromDir(mDirProject,AllocRegex(mPat),0,10))
    {
        cOneEntryWalkMan anEntry(aName,SizeFile(aName));
        mMapE[FileOfPath(aName)] = anEntry;
@@ -188,7 +188,7 @@ int cAppli_Walkman::Exe()
    { 
       cOneEntryWalkMan & anE  = *(mVE.at(aKSel));
       aSzSel +=  anE.mFileSize / 1e6;
-      std::cout << "NAME=" << anE.mName <<  " SZF=" << anE.mFileSize << "\n";
+      StdOut() << "NAME=" << anE.mName <<  " SZF=" << anE.mFileSize << "\n";
       anE.mNbListened++;
 
       int aNum = aSW.mNbTot;
@@ -209,26 +209,26 @@ int cAppli_Walkman::Exe()
       aSW.mVE.push_back(anE);
    }
 
-   std::cout << "Nb Files " << aKSel << " Sz=" << aSzSel << "\n";
+   StdOut() << "Nb Files " << aKSel << " Sz=" << aSzSel << "\n";
    SaveInFile(aSW,mDirProject+mNameSauv);
 
    return EXIT_SUCCESS;
 }
 
 
-tMMVII_UnikPApli Alloc_Walkman(int argc,char ** argv,const cSpecMMVII_Appli & aSpec)
+tMMVII_UnikPApli Alloc_Walkman(const std::vector<std::string> &  aVArgs,const cSpecMMVII_Appli & aSpec)
 {
-   return tMMVII_UnikPApli(new cAppli_Walkman(argc,argv,aSpec));
+   return tMMVII_UnikPApli(new cAppli_Walkman(aVArgs,aSpec));
 }
 
 cSpecMMVII_Appli  TheSpecWalkman
 (
-     "Walkman",
+     "MediaWalkman",
       Alloc_Walkman,
       "This command is used to make a random selection of music",
       {eApF::Perso},
-      {eApDT::FileSys},
-      {eApDT::Xml},
+      {eApDT::FileSys,eApDT::Media},
+      {eApDT::Xml,eApDT::Media},
       __FILE__
 );
 

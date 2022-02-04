@@ -58,8 +58,8 @@ class cMemState
         int64_t  mCheckNb;
         int64_t  mCheckSize;
         int64_t  mCheckPtr;
-        int64_t  mNbObjCreated;
-        bool     mDoCheckAtDestroy; ///< Sometime we need to do the check at the very end of the existence
+        int64_t  mNbObjCreated;   ///< Number of allocation/desalloc
+        bool     mDoCheckAtDestroy; ///< Sometime we need to do the check at the very end of the existence, this is 4 last object
 };
 
 /**
@@ -90,17 +90,44 @@ class cMemManager
         {
            return  static_cast<Type *> (cMemManager::Calloc(nmemb,sizeof(Type)));
         }
-        // Pour des raison inexpliquee Alloc<char *> ne semble pas fonctionner => contournement
-/*
-        template <class Type> static inline Type ** AllocP(size_t nmemb)
+
+        template <class Type> static inline Type ** AllocMat(int aTx,int aTy)
         {
-           return  static_cast<Type **> (cMemManager::Calloc(nmemb,sizeof(Type *)));
+           Type ** aRes = Alloc<Type*>(aTy);
+	   for (int aY=0 ; aY<aTy ; aY++)
+               aRes[aY] = Alloc<Type>(aTx);
+	   return aRes;
         }
-*/
+
+        template <class Type> static void  FreeMat(Type ** aMat,int aTy)
+	{
+            for (int aY=0 ; aY<aTy ; aY++)
+                Free(aMat[aY]);
+            Free(aMat);
+	}
+
+        template <class Type> static bool Resize (Type *& aPtr,int aX0Prec,int & aSzMax,int aX0New,int aSzNew)
+        {
+           if (aSzNew > aSzMax)
+           {
+                Free(aPtr+aX0Prec); 
+                aPtr = Alloc<Type> (aSzNew)-aX0New;
+                aSzMax = aSzNew;
+                return true;
+           }
+           else
+               aPtr = aPtr + aX0Prec-aX0New;
+           return false;
+        }
+        static void SetActiveMemoryCount(bool aVal);
+        static bool IsActiveMemoryCount();
     private :
 
         static cMemState mState;
+        static bool TheActiveMemoryCount;
 };
+
+
 
 
 /**
@@ -113,11 +140,29 @@ class  cMemCheck
       public :
          void * operator new    (size_t sz);
          void operator delete   (void * ptr) ;
+#if (The_MMVII_DebugLevel >= The_MMVII_DebugLevel_InternalError_tiny)
+         cMemCheck()  
+         {
+              mActiveNbObj=   cMemManager::IsActiveMemoryCount();
+              if (mActiveNbObj)
+              {
+                 TheNbObjLive++;
+              }
+         }
+         cMemCheck(const cMemCheck &)  : cMemCheck () {}
+         ~cMemCheck() 
+         {
+            if (mActiveNbObj)
+            {
+                 TheNbObjLive--;
+            }
+         }
+         bool mActiveNbObj; 
+#endif
+         static int    NbObjLive();
       private :
-
+         static int    TheNbObjLive;
        // to avoid use 
-         void * operator new []  (size_t sz);
-         void operator delete [] (void * ptr) ;
 };
 
 

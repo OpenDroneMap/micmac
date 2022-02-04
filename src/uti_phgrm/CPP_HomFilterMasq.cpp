@@ -77,7 +77,8 @@ int HomFilterMasq_main(int argc,char ** argv)
     // MemoArg(argc,argv);
     MMD_InitArgcArgv(argc,argv);
     std::string  aDir,aPat,aFullDir;
-    bool ExpTxt=false;
+    bool ExpTxtIn=false;
+    bool ExpTxtOut=false;
     std::string PostPlan="_Masq";
     std::string KeyCalcMasq;
     std::string KeyEquivNoMasq;
@@ -91,8 +92,11 @@ int HomFilterMasq_main(int argc,char ** argv)
     double  aDistId=-1;
     double  aDistHom=-1;
     bool    DoSym  = false;
+    bool    DoCalNb = false;
 
     Pt2dr  aSelecTer;
+
+    std::vector<double> aVParam3DRel;
 
 
     ElInitArgMain
@@ -106,18 +110,30 @@ int HomFilterMasq_main(int argc,char ** argv)
                     << EAM(KeyEquivNoMasq,"KeyEquivNoMasq",true,"When given if KENM(i1)==KENM(i2), don't masq")
                     << EAM(aResol,"Resol",true,"Sub Resolution for masq storing, Def=10")
                     << EAM(AcceptNoMask,"ANM",true,"Accept no mask, def = true if MasqGlob and false else")
-                    << EAM(ExpTxt,"ExpTxt",true,"Ascii format for in and out, def=false")
+                    << EAM(ExpTxtIn,"ExpTxt",true,"Ascii format for in and out, def=false")
+                    << EAM(ExpTxtOut,"ExpTxtOut",true,"Ascii format for out when != in , def=ExpTxt")
                     << EAM(aPostIn,"PostIn",true,"Post for Input dir Hom, Def=")
                     << EAM(aPostOut,"PostOut",true,"Post for Output dir Hom, Def=MasqFiltered")
                     << EAM(aOriMasq3D,"OriMasq3D",true,"Orientation for Masq 3D")
                     << EAM(aNameMasq3D,"Masq3D",true,"File of Masq3D, Def=AperiCloud_${OriMasq3D}.ply")
+                    << EAM(aVParam3DRel,"Param3DRel",true,"Relative 3D param [DZMin,DZMax,DistMax]")
                     << EAM(aSelecTer,"SelecTer",true,"[Per,Prop] Period of tiling on ground selection, Prop=proporion of selected")
                     << EAM(aDistId,"DistId",true,"Supress pair such that d(P1,P2) < DistId, def unused")
-                    << EAM(aDistHom,"DistH",true,"Distance for filtering homologous point")
-                    << EAM(DoSym,"Symetrise",true,"Symetrise masq")
+                    << EAM(aDistHom,"DistH",true,"Distance of reprojection for filtering homologous point")
+                    << EAM(DoSym,"Symetrise",true,"Symetrise Files when dont exist")
+                    << EAM(DoCalNb,"Nb",true,"Calculate number of homologous points")
     );
     bool aHasOri3D =  EAMIsInit(&aOriMasq3D);
     bool HasTerSelec = EAMIsInit(&aSelecTer);
+    bool HasRel3DFilter = EAMIsInit(&aVParam3DRel);
+    double aDZMin=0,aDZMax=0,aDistMax=0;
+    if (HasRel3DFilter)
+    {
+       ELISE_ASSERT(aVParam3DRel.size()==3,"aVParam3DRel bad size");
+       aDZMin = aVParam3DRel.at(0);
+       aDZMax = aVParam3DRel.at(1);
+       aDistMax = aVParam3DRel.at(2);
+    }
 
 
     #if (ELISE_windows)
@@ -129,8 +145,12 @@ int HomFilterMasq_main(int argc,char ** argv)
         CorrecNameMasq(aDir,aPat,PostPlan);
     }
 
+
     if (!EAMIsInit(&AcceptNoMask))
        AcceptNoMask = EAMIsInit(&MasqGlob) || aHasOri3D || EAMIsInit(&aDistId) || DoSym;
+
+    if (DoCalNb)
+        AcceptNoMask = true;
 
 
     cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc(aDir);
@@ -149,7 +169,7 @@ int HomFilterMasq_main(int argc,char ** argv)
         }
         else
         {
-            ELISE_ASSERT(EAMIsInit(&aSelecTer) || (aDistHom>=0),"Unused OriMasq3D");
+            ELISE_ASSERT(EAMIsInit(&aSelecTer) || (aDistHom>=0) || HasRel3DFilter ,"Unused OriMasq3D");
         }
         aKeyOri = "NKS-Assoc-Im2Orient@" + aOriMasq3D;
     }
@@ -215,17 +235,20 @@ int HomFilterMasq_main(int argc,char ** argv)
     if (aHasOri3D)
        aResolMoy /= aVCam.size();
 
-    std::string anExt = ExpTxt ? "txt" : "dat";
+    std::string anExtIn = ExpTxtIn ? "txt" : "dat";
+    if (!EAMIsInit(&ExpTxtOut))
+      ExpTxtOut = ExpTxtIn;
+    std::string anExtOut = ExpTxtOut ? "txt" : "dat";
 
 
     std::string aKHIn =   std::string("NKS-Assoc-CplIm2Hom@")
                        +  std::string(aPostIn)
                        +  std::string("@")
-                       +  std::string(anExt);
+                       +  std::string(anExtIn);
     std::string aKHOut =   std::string("NKS-Assoc-CplIm2Hom@")
                         +  std::string(aPostOut)
                         +  std::string("@")
-                       +  std::string(anExt);
+                       +  std::string(anExtOut);
 
 
     double aPeriodTer=0,aSeuilDistTer=0;
@@ -239,6 +262,7 @@ int HomFilterMasq_main(int argc,char ** argv)
     double aNbTestTer=0;
 
 
+    int aNbHomol=0;
     for (int aKN1 = 0 ; aKN1<int(aVN->size()) ; aKN1++)
     {
         std::cout << "Filter Reste " << aVN->size() - aKN1 << "\n";
@@ -276,75 +300,110 @@ std::cout << aNameIm1  << " # " << aNameIm2 << "\n";
                   ElPackHomologue aPackSymOut;
                   for (ElPackHomologue::const_iterator itP=aPackIn.begin(); itP!=aPackIn.end() ; itP++)
                   {
-                      Pt2dr aP1 = itP->P1();
-                      Pt2dr aP2 = itP->P2();
-                      Pt2di aQ1 = round_ni(aP1/aResol);
-                      Pt2di aQ2 = round_ni(aP2/aResol);
-
-                      bool Ok = ((aMasq1.get(aQ1,0) && aMasq2.get(aQ2,0)) || (! UseMasq));
-
-                      if (Ok &&  aHasOri3D)
+                      aNbHomol++;
+                      if (!DoCalNb)
                       {
-                          //  Pt3dr  aPTer= aVCam[aKN1]->PseudoInter(aP1,*(aVCam[aKN2]),aP2);
-                          ElSeg3D aSeg1 = aVCam[aKN1]->Capteur2RayTer(aP1);
-                          ElSeg3D aSeg2 = aVCam[aKN2]->Capteur2RayTer(aP2);
-                          Pt3dr  aPTer= aSeg1.PseudoInter(aSeg2);
-                          if (aMasq3D && (! aMasq3D->IsInMasq(aPTer)))
-                             Ok = false;
-
-                          if (Ok && HasTerSelec)
-                          {
-                              bool OkTer =  (mod_real(aPTer.x,aPeriodTer) < aSeuilDistTer) && (mod_real(aPTer.y,aPeriodTer) < aSeuilDistTer);
-                              Ok = OkTer;
-                              aNbTestTer ++;
-                              aNbInTer += OkTer;
-                          }
-
-                          if (Ok && (aDistHom >0 ))
-                          {
-                              Pt2dr aRP1 =  aVCam[aKN1]->Ter2Capteur(aPTer);
-                              Pt2dr aRP2 =  aVCam[aKN2]->Ter2Capteur(aPTer);
-                              double aD1 = euclid(aP1,aRP1);
-                              double aD2 = euclid(aP2,aRP2);
-                              if ((aD1+aD2) > aDistHom)
-                              {
+                           Pt2dr aP1 = itP->P1();
+                           Pt2dr aP2 = itP->P2();
+                           Pt2di aQ1 = round_ni(aP1/aResol);
+                           Pt2di aQ2 = round_ni(aP2/aResol);
+                       
+                           bool Ok = ((aMasq1.get(aQ1,0) && aMasq2.get(aQ2,0)) || (! UseMasq));
+                       
+                           if (Ok &&  aHasOri3D)
+                           {
+                               //  Pt3dr  aPTer= aVCam[aKN1]->PseudoInter(aP1,*(aVCam[aKN2]),aP2);
+                               ElSeg3D aSeg1 = aVCam[aKN1]->Capteur2RayTer(aP1);
+                               ElSeg3D aSeg2 = aVCam[aKN2]->Capteur2RayTer(aP2);
+                               Pt3dr  aPTer= aSeg1.PseudoInter(aSeg2);
+                               if (aMasq3D && (! aMasq3D->IsInMasq(aPTer)))
                                   Ok = false;
-                                  std::cout << "DIST " << aD1 << " " << aD2 << "\n";
-                              }
-                          }
-                      }  
+                       
+                               if (Ok && HasTerSelec)
+                               {
+                                   bool OkTer =  (mod_real(aPTer.x,aPeriodTer) < aSeuilDistTer) && (mod_real(aPTer.y,aPeriodTer) < aSeuilDistTer);
+                                   Ok = OkTer;
+                                   aNbTestTer ++;
+                                   aNbInTer += OkTer;
+                               }
+                               if (Ok && HasRel3DFilter)
+                               {
+                                   CamStenope * aCam1 = aVCam[aKN1]->DownCastCS();
+                                   CamStenope * aCam2 = aVCam[aKN2]->DownCastCS();
+                                   Pt3dr aC1 = aCam1->PseudoOpticalCenter();
+                                   Pt3dr aC2 = aCam2->PseudoOpticalCenter();
 
-                      if (Ok && (aDistId>=0))
-                      {
-                         if (euclid(aP1,aP2)<aDistId)
-                            Ok = false;
-                      }
-
-                      if (Ok)
-                      {
-                          ElCplePtsHomologues aCple(aP1,aP2);
-                          aPackOut.Cple_Add(aCple);
-                          if (SymThisFile) 
-                          {
-                              ElCplePtsHomologues aCpleSym(aP2,aP1);
-                              aPackSymOut.Cple_Add(aCpleSym);
-                          }
+                                   // double aDZ1   =  aC1.z-aPTer.z; MODIF MPD/Yann => ca semble plus logique dans l'autre sens
+								   double aDZ1   =  aPTer.z-aC1.z;
+                                   double aDist1 =  euclid(aC1-aPTer);
+                                   // double aDZ2   =  aC2.z-aPTer.z;
+								   double aDZ2   =  aPTer.z-aC2.z;
+                                   double aDist2 =  euclid(aC2-aPTer);
+								   
+                                   if (  
+                                           ((aDZ1<aDZMin) &&  (aDZ2<aDZMin))
+                                        || ((aDZ2>aDZMax) &&  (aDZ2>aDZMax))
+                                        || ((aDist1>aDistMax) &&  (aDist2>aDistMax))
+                                      )
+                                   {
+                                      Ok = false;
+                                   }
+                               }
+                       
+                               if (Ok && (aDistHom >0 ))
+                               {
+                                   Pt2dr aRP1 =  aVCam[aKN1]->Ter2Capteur(aPTer);
+                                   Pt2dr aRP2 =  aVCam[aKN2]->Ter2Capteur(aPTer);
+                                   double aD1 = euclid(aP1,aRP1);
+                                   double aD2 = euclid(aP2,aRP2);
+                                   if ((aD1+aD2) > aDistHom)
+                                   {
+                                       Ok = false;
+                                       std::cout << "DIST " << aD1 << " " << aD2 << "\n";
+                                   }
+                               }
+                           }  
+                       
+                           if (Ok && (aDistId>=0))
+                           {
+                              if (euclid(aP1,aP2)<aDistId)
+                                 Ok = false;
+                           }
+                       
+                           if (Ok)
+                           {
+                               ElCplePtsHomologues aCple(aP1,aP2,itP->Pds());
+                               aPackOut.Cple_Add(aCple);
+                               if (SymThisFile) 
+                               {
+                                   ElCplePtsHomologues aCpleSym(aP2,aP1);
+                                   aPackSymOut.Cple_Add(aCpleSym);
+                               }
+                           }
                       }
                   }
-                  std::string aNameOut = aDir + anICNM->Assoc1To2(aKHOut,aNameIm1,aNameIm2,true);
-                  aPackOut.StdPutInFile(aNameOut);
-                  if (SymThisFile)
+
+                  if (!DoCalNb)
                   {
-                      std::string aNameInSymOut = aDir + anICNM->Assoc1To2(aKHOut,aNameIm2,aNameIm1,true);
-                      aPackSymOut.StdPutInFile(aNameInSymOut);
+                       std::string aNameOut = aDir + anICNM->Assoc1To2(aKHOut,aNameIm1,aNameIm2,true);
+                       aPackOut.StdPutInFile(aNameOut);
+                       if (SymThisFile)
+                       {
+                           std::string aNameInSymOut = aDir + anICNM->Assoc1To2(aKHOut,aNameIm2,aNameIm1,true);
+                           aPackSymOut.StdPutInFile(aNameInSymOut);
+                       }
+                       // std::cout << "IN " << aNameIn << " " << aNameOut  << " UseM " << UseMasq  << " Nb=" <<  aPackOut.size() << "\n";
                   }
-                  // std::cout << "IN " << aNameIn << " " << aNameOut  << " UseM " << UseMasq  << " Nb=" <<  aPackOut.size() << "\n";
              }
         }
     }
     // std::vector<cImFMasq *> mVIm;
 
-    if (HasTerSelec)
+    if (DoCalNb)
+    {
+        std::cout << "Nb homol: " << aNbHomol << "\n";
+    }
+    else if (HasTerSelec)
     {
         std::cout << "A Posteriori Prop=" << aNbInTer / aNbTestTer << "\n";
     }

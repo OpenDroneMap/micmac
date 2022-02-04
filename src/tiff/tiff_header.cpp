@@ -58,8 +58,9 @@ int DefValueBigTif = 0;
 
 bool IsNamePxm(const std::string & post)
 {
-    return    (post == "PBM") || (post == "PGM") || (post == "PPM")
-           || (post == "pbm") || (post == "pgm") || (post == "ppm");
+    return    (post == "PBM") || (post == "PGM") || (post == "PPM") || (post == "PFM")
+           || (post == "pbm") || (post == "pgm") || (post == "ppm") || (post == "pfm")
+    ;
 }
 
 bool IsNameSunRaster(const std::string & post)
@@ -781,7 +782,7 @@ DATA_Tiff_Ifd::DATA_Tiff_Ifd
     else // (aIntBigTif==0)
     {
        
-       if (MPD_MM()) std::cout << "BIGTIF suspended momentally \n";
+       // if (MPD_MM()) std::cout << "BIGTIF suspended momentally \n";
       // mUseFileTile = 0;
       // mBigTiff =  aSzNCompr > aMaxSzFile;
     }
@@ -1895,9 +1896,8 @@ Tiff_Im  Tiff_Im::BasicConvStd(const ElSTDNS string & Name)
        if ((post=="RS") || (post=="rs") )
            return Elise_Tiled_File_Im_2D::sun_raster(Name.c_str()).to_tiff();
 
-       if (     (post=="pbm") || (post=="PBM")
-                ||  (post=="pgm") || (post=="PGM")
-                ||  (post=="ppm") || (post=="PPM")
+       if (   IsNamePxm(post)
+             /*  (post=="pbm") || (post=="PBM") ||  (post=="pgm") || (post=="PGM") ||  (post=="ppm") || (post=="PPM") */
               )
               return Elise_File_Im::pnm(Name.c_str()).to_tiff();
 
@@ -2268,7 +2268,7 @@ L_Arg_Opt_Tiff  ArgOpTiffMDP(const cMetaDataPhoto & aMDP,bool SVP)
 
 L_Arg_Opt_Tiff  ArgOpTiffMDP(const std::string & aNF)
 {
-   return ArgOpTiffMDP(Tiff_Im(aNF.c_str()).MDP());
+   return ArgOpTiffMDP(Tiff_Im(aNF.c_str()).MDP(),true);
 }
 
 

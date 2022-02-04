@@ -1,6 +1,8 @@
 #ifndef  _MMVII_Util_TPL_H_
 #define  _MMVII_Util_TPL_H_
 
+#include <algorithm>
+
 namespace MMVII
 {
 
@@ -49,8 +51,8 @@ template<class Type> cSelector<Type> operator !  (const cSelector<Type> &); ///<
 
      (none,V2,true,false)  =>  ]-infinity,V2[ 
 */
-template<class Type> cSelector<Type> GenIntervalSelector( const boost::optional<Type> & aV1,
-                                                       const boost::optional<Type> & aV2,
+template<class Type> cSelector<Type> GenIntervalSelector( const std::optional<Type> & aV1,
+                                                       const std::optional<Type> & aV2,
                                                        bool aInclLow,bool InclUp);
 
 /// Facilty to GenIntervalSelector : left interval  ]-infinity,...
@@ -96,7 +98,7 @@ void BenchSet(const std::string & aDir);
 template <class Type> class cExtSet  : public  cSelector<Type>
 {
     public :
-         ~cExtSet() ;
+         virtual ~cExtSet() ;
          cExtSet<Type>   Dupl() const ; // return a duplicata
          cExtSet<Type>   EmptySet() const ; // return a set from same type
 
@@ -143,6 +145,7 @@ template <class Type> void SortPtrValue(std::vector<Type*> &aV);
 tNameSet SetNameFromPat    (const std::string&); ///< create a set of file from a pattern
 tNameSet SetNameFromFile   (const std::string&, int aNumV); ///< create from a file xml, V1 or V2
 tNameSet SetNameFromString (const std::string&, bool AllowPat); ///< general case, try to recognize automatically V1, V2 or pattern
+std::vector<std::string>  ToVect(const tNameSet &);  ///< Less economic but more convenient than PutInVect
 
 /** read from file, select version, accept empty, error if file exist bud in bad format */
 tNameRel  RelNameFromFile (const std::string&);
@@ -195,6 +198,69 @@ template <class Type> class cOrderedPair
 #else
 #define  M_VectorAt(V,aK) (V[aK])
 #endif 
+
+
+/* *************************************************** */
+/*                                                     */
+/*   Complement to STL, thing in C++20 and not 14 .... */
+/*                                                     */
+/* *************************************************** */
+
+template<class TCont,class TVal> bool  BoolFind(const TCont & aCont,const TVal & aVal)
+{
+    return std::find(aCont.begin(),aCont.end(),aVal) != aCont.end();
+}
+
+template <class TV,class TF> void erase_if(TV & aVec,const TF& aFonc)
+{
+   aVec.erase(std::remove_if(aVec.begin(),aVec.end(),aFonc),aVec.end());
+}
+
+template <class Type> int LexicoCmp(const std::vector<Type> & aV1,const std::vector<Type> & aV2);
+
+template <class Type> void Append(std::vector<Type> & aRes, const std::vector<Type> & aV1,const std::vector<Type> & aV2)
+{
+   aRes = aV1;
+   for (const auto & aVal : aV2)
+       aRes.push_back(aVal);
+}
+template <class Type> std::vector<Type> Append(const std::vector<Type> & aV1,const std::vector<Type> & aV2)
+{
+    std::vector<Type> aRes;
+    Append(aRes,aV1,aV2);
+    return aRes;
+}
+
+
+template <class Type>  std::vector<std::vector<Type>>  ProdCart(const std::vector<std::vector<Type>>  aVV)
+{
+     std::vector<std::vector<Type>> aVVRes;
+     aVVRes.push_back(std::vector<Type>());
+     for (const auto & aVNewV : aVV)
+     {
+          std::vector<std::vector<Type>>  aNewVVRes;
+          for (const auto & aVR : aVVRes)
+          {
+              for (const auto & aNewVal : aVNewV)
+              {
+                  std::vector<Type> aNewVect = aVR;
+                  aNewVect.push_back(aNewVal);
+                  aNewVVRes.push_back(aNewVect);
+              }
+          }
+          aVVRes = aNewVVRes;
+     }
+     return aVVRes;
+}
+
+template <class TVal,class TFunc> void SortOnCriteria(std::vector<TVal> & aVec,const TFunc & aFunc)
+{   
+    std::sort
+    (
+         aVec.begin(),aVec.end(),
+         [&aFunc](const auto & aV1,const auto & aV2) {return aFunc(aV1) < aFunc(aV2);}
+    );
+}
 
 
 

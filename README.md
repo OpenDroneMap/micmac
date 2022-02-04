@@ -1,3 +1,7 @@
+MICMAC
+======
+[![Build Status](https://travis-ci.org/micmacIGN/micmac.svg?branch=master)](https://travis-ci.org/micmacIGN/micmac)
+
 [Version française](LISEZMOI.md)
 
 # Prerequisites
@@ -43,6 +47,8 @@ The package of X11 headers is general called `libx11-dev` under Linux distributi
 X11-based tools are not available in the Windows version.
 Windows users may need Qt5 libraries to generate graphical interfaces such as *SaisieMasqQT*.
 
+For recompilation optimization, [ccache](ccache.dev) is automatically used if detected.
+
 ## Compiling process for Linux / MacOS X
 
 - clone the git repository : `git clone https://github.com/micmacIGN/micmac.git`
@@ -57,6 +63,21 @@ The first steps are the same as for a Linux/MacOS build except for the `make` ca
 Instead of makefiles, *Cmake* generates a Visual C++ solution, named `micmac.sln`. Open it and compile the `INSTALL` project. 
 Be sure to be in *Release* configuration, for Micmac is much faster built this way than in *Debug* mode.
 Again, do not compile the entire solution but just the `INSTALL` project, otherwise compiled binaries won't be copied in the `bin` directory and this will prevent Micmac from working.
+
+## Docker image
+A precompiled docker image is available and ready to use:
+
+`docker pull rupnike/micmac`
+
+or build your own image from scratch using the existing Dockerfile:
+
+`docker image build -t micmac:1.0 -f Dockerfile`
+
+[![Docker Status](https://dockeri.co/image/rupnike/micmac)](https://hub.docker.com/r/rupnike/micmac/)
+
+## Install MicMac in WinOS subsystem
+
+You can also use MicMac on Windows 10 through the Windows Subsystem for Linux (WSL). WSL allows you to run a Linux distribution (e.g. Ubuntu) directly on Windows, unmodified, without the overhead of a traditional virtual machine or dualboot setup. For further information please refer to the instructions in this [WSL tutorial](https://micmac.ensg.eu/index.php/Install_MicMac_in_Windows_Subsystem_for_Linux).
 
 # Installation test
 

@@ -47,6 +47,52 @@ Header-MicMac-eLiSe-25/06/2007*/
 /*    EpipolaireCoordinate                       */
 /*                                               */
 /*************************************************/
+void EpipolaireCoordinate::SaveOrientEpip
+              (
+                  const std::string &                anOri,
+                  cInterfChantierNameManipulateur *  anICNM,
+                  const std::string &                aNameIm,
+                  const std::string &                aNameOther
+               ) const
+{
+   //   anOri + aNameIm + aNameOther + Ori(aNameIm) + Ori(aNameOther)  +  OrientationItself
+   std::string  aNameFile = anICNM->NameOrientEpipGen(anOri,aNameIm,aNameOther);
+
+   /*std::string  aNameFile = anICNM->Assoc1To2
+                        (
+                            "NKS-Assoc-CplIm2OriGenEpi@"+anOri+"@txt",
+                            aNameIm,aNameOther,true
+                        );
+   */
+   ELISE_fp  aFile(aNameFile.c_str(),ELISE_fp::WRITE,false,ELISE_fp::eTxtTjs);
+
+
+   aFile.write(anOri);
+   aFile.write(aNameIm);
+   aFile.write(anICNM->StdNameCamGenOfNames(anOri,aNameIm));
+   aFile.write(aNameOther);
+   aFile.write(anICNM->StdNameCamGenOfNames(anOri,aNameOther));
+
+   CastToPol()->write(aFile);
+   aFile.close();
+}
+
+
+void EpipolaireCoordinate::XFitHom(const ElPackHomologue &,bool aL2,EpipolaireCoordinate *)
+{
+   ELISE_ASSERT(false,"No def val for XFitHom");
+}
+
+bool EpipolaireCoordinate::HasXFitHom() const
+{
+    return false;
+}
+
+std::vector<double>  EpipolaireCoordinate::ParamFitHom() const 
+{
+   ELISE_ASSERT(false,"No ParamFitHom");
+   return std::vector<double>();
+}
 
 
 void EpipolaireCoordinate::HeriteChScale(EpipolaireCoordinate & anEC,REAL aChSacle)
@@ -282,6 +328,14 @@ bool  cMappingEpipCoord::IsEpipId() const
 /*                                               */
 /*************************************************/
 
+static double  mExagEpip=1.0;
+static bool mApproxInvExagEpip=false;
+
+void SetExagEpip(double aVal,bool AcceptApprox)
+{
+    mExagEpip = aVal;
+    mApproxInvExagEpip=AcceptApprox;
+}
 
 void  EpipolaireCoordinate::Diff(ElMatrix<REAL> &,Pt2dr) const 
 {
@@ -295,11 +349,45 @@ void  EpipolaireCoordinate::Diff(ElMatrix<REAL> &,Pt2dr) const
 
 Pt2dr PolynomialEpipolaireCoordinate::ToCoordEpipol(Pt2dr aPInit) const
 {
-   return Pt2dr(aPInit.x,mPolToYEpip(aPInit));
+   ELISE_ASSERT((mExagEpip==1.0)||  (!mCorCalc) ,"Dont handle Exag + mCorCalc");
+
+   Pt2dr aRes (aPInit.x,aPInit.y + (mPolToYEpip(aPInit)-aPInit.y) * mExagEpip);
+   double aX = mCorCalc ?  (mNum0 + mNumx*aRes.x+mNumy*aRes.y)/(1.0+mDenx*aRes.x+mDeny*aRes.y) : aRes.x;
+
+   return Pt2dr(aX,aRes.y);
 }
 
 Pt2dr PolynomialEpipolaireCoordinate::ToCoordInit(Pt2dr aP) const
 {
+   if (mExagEpip!=1.0)
+   {
+       static double aErMax = 0.0;
+       ELISE_ASSERT(mApproxInvExagEpip ,"Can Invert Epip with mExagEpip");
+       ELISE_ASSERT((!mCorCalc) ,"Can Invert Epip iwth Exag + CorCalc");
+       double aY = aP.y;
+       double aG =  aY;
+       int aNb=10;
+       
+       for (int aK=0 ; aK<= aNb ; aK++)
+       {
+            aP = ToCoordEpipol(Pt2dr(aP.x,aG));
+            double aEr = aP.y - aY;
+            aG = aG - aEr;
+            if (aK==aNb)
+            {
+                double aAe = ElAbs(aEr);
+                if (aAe>aErMax)
+                {
+                    aErMax = aAe;
+                    std::cout << "Errrr EpipInverse/Scale " << aK << " " << aErMax << "\n";
+                }
+            }
+       }
+       return Pt2dr(aP.x,aG);
+   }
+   aP.x = mCorCalc                                                                  ?  
+	  (mNum0 + mNumy * aP.y - aP.x - mDeny *aP.y *aP.x) / (mDenx*aP.x -mNumx)   :
+	  aP.x                                                                      ;
    return Pt2dr(aP.x,mPolToYInit(aP));
 }
 
@@ -336,9 +424,102 @@ PolynomialEpipolaireCoordinate::PolynomialEpipolaireCoordinate
 ) :
    EpipolaireCoordinate(aP0,aDirX,aTrFin),
    mPolToYEpip (aPolY),
-   mPolToYInit (aPolInvY ? *aPolInvY : (InvPolY(aPolY,aDom,aPolY.DMax()+DeltaDegreInv)))
+   mPolToYInit (aPolInvY ? *aPolInvY : (InvPolY(aPolY,aDom,aPolY.DMax()+DeltaDegreInv))),
+   mNum0    (0.0),
+   mNumx    (1.0),
+   mNumy    (0.0),
+   mDenx    (0.0),
+   mDeny    (0.0),
+   mCorCalc (false)
 {
 }
+
+bool  PolynomialEpipolaireCoordinate::HasXFitHom() const
+{
+    return mCorCalc;
+}
+
+std::vector<double>  PolynomialEpipolaireCoordinate::ParamFitHom() const 
+{
+   return std::vector<double>({mNum0,mNumx,mNumy,mDenx,mDeny});
+}
+
+#define NBCOEFXFIT 5
+
+void  PolynomialEpipolaireCoordinate::XFitHom(const ElPackHomologue & aPack,bool aL2,EpipolaireCoordinate *anEpi2)
+{
+   ELISE_ASSERT((!HasXFitHom()) && (!anEpi2->HasXFitHom()),"Multiple XFitHom");
+
+   cGenSysSurResol * aSys =  nullptr;
+   if (aL2)
+      aSys = new L2SysSurResol(NBCOEFXFIT) ;
+   else
+      aSys = new SystLinSurResolu(NBCOEFXFIT,aPack.size()) ;
+
+   aSys->SetPhaseEquation(nullptr);
+
+    double aDx0 = 0.0;
+    double aDy0 = 0.0;
+
+    for (const auto & aCple : aPack)
+    {
+        Pt2dr aQ1 = Direct(aCple.P1());
+        Pt2dr aQ2 = anEpi2->Direct(aCple.P2());
+
+	/*std::cout<< "ElSwap(aQ1,aQ2)ElSwap(aQ1,aQ2)\n";
+	ElSwap(aQ1,aQ2);*/
+
+	// mC0 + mCx aQ1.x + mCy aQ1.y = aQ2.x
+	// void V_GSSR_AddNewEquation(REAL aPds,REAL * aCoeff,REAL aB);
+	double aCoeff[NBCOEFXFIT];
+	aCoeff[0] = 1.0;
+	aCoeff[1] = aQ1.x ;
+	aCoeff[2] = aQ1.y;
+	aCoeff[3] = -aQ1.x * aQ2.x;
+	aCoeff[4] = -aQ1.y * aQ2.x;
+
+	aDx0 += ElAbs(aQ1.x -aQ2.x);
+	aDy0 += ElAbs(aQ1.y -aQ2.y);
+
+	aSys->GSSR_AddNewEquation(1.0,aCoeff,aQ2.x,nullptr);
+    }
+    Im1D_REAL8 aSol = aSys->GSSR_Solve(nullptr);
+    mNum0 = aSol.data()[0];
+    mNumx = aSol.data()[1];
+    mNumy = aSol.data()[2];
+    mDenx = aSol.data()[3];
+    mDeny = aSol.data()[4];
+    mCorCalc = true;
+
+    {
+       double aDx1 = 0.0;
+       double aDy1 = 0.0;
+       double aDCoh1 = 0.0;
+       double aDCoh2 = 0.0;
+       for (const auto & aCple : aPack)
+       {
+           Pt2dr aQ1 = Direct(aCple.P1());
+           Pt2dr aQ2 = anEpi2->Direct(aCple.P2());
+
+	   aDx1 += ElAbs(aQ1.x -aQ2.x);
+	   aDy1 += ElAbs(aQ1.y -aQ2.y);
+
+	   aDCoh1 += euclid(aCple.P1()-Inverse(aQ1));
+	   aDCoh2 += euclid(aCple.P2()-anEpi2->Inverse(aQ2));
+	}
+
+	// mC0 + mCx aQ1.x + mCy aQ1.y = aQ2.x
+	int aNb = aPack.size();
+	std::cout << "  XFITTTTTTTTTTTTTTTTTTTTTTTTT\n";
+	std::cout << "BEFORE Dx:" << aDx0/aNb << " Dy:" << aDy0/aNb << "  \n";
+	std::cout << "  AFTR Dx:" << aDx1/aNb << " Dy:" << aDy1/aNb << "  \n";
+	std::cout << "  COHER 1:" << aDCoh1/aNb << " 2:" << aDCoh2/aNb << "  \n";
+	// getchar();
+    }
+
+    delete aSys;
+}
+
 
 
 Polynome2dReal PolynomialEpipolaireCoordinate::PolToYEpip()
@@ -446,6 +627,18 @@ CpleEpipolaireCoord::~CpleEpipolaireCoord()
    delete mEPI2;
 }
 
+void CpleEpipolaireCoord::SaveOrientCpleEpip
+     (
+                  const std::string &                anOri,
+                  cInterfChantierNameManipulateur *  anICNM,
+                  const std::string &                aName1,
+                  const std::string &                aName2
+     ) const
+{
+    EPI1().SaveOrientEpip(anOri,anICNM,aName1,aName2);
+    EPI2().SaveOrientEpip(anOri,anICNM,aName2,aName1);
+}
+
 
 bool  CpleEpipolaireCoord::IsMappingEpi1() const
 {
@@ -550,18 +743,23 @@ Pt2dr CpleEpipolaireCoord::Homol(Pt2dr aP,Pt2dr aParalaxe,bool Sens12)
 
 
 
+const EpipolaireCoordinate & CpleEpipolaireCoord::EPI1() const { return *mEPI1; }
+const EpipolaireCoordinate & CpleEpipolaireCoord::EPI2() const { return *mEPI2; }
+EpipolaireCoordinate & CpleEpipolaireCoord::EPI1() { return *mEPI1; }
+EpipolaireCoordinate & CpleEpipolaireCoord::EPI2() { return *mEPI2; }
 
+/*
+    On cherche a resoudre dans les reperes epipolaire (liés aux directio aDir1, 
+    aDir2 comme axe des x) un couple de  transfo en y (Y1,Y2) tel que :
 
+       Y1(P) = Y2(P) pour tous les points hom de aPackH
 
-EpipolaireCoordinate & CpleEpipolaireCoord::EPI1()
-{
-   return *mEPI1;
-}
-EpipolaireCoordinate & CpleEpipolaireCoord::EPI2()
-{
-   return *mEPI2;
-}
+    Bien sur c'est indeterminé à une fonction pres , donc on impose ausi  pour lever l'arbitraire :
+ 
+       Y1((0,y)) = y
 
+        
+*/
 
 CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
                      (
@@ -571,7 +769,8 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
                           const ElPackHomologue & aPackH,
                           INT   aDegre,
                           Pt2dr aDir1,
-                          Pt2dr aDir2
+                          Pt2dr aDir2,
+                          int aDeltaDeg 
                      )
 {
    StatElPackH  aStat(aPackH);
@@ -580,6 +779,7 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
    Polynome2dReal aPol1(aDegre,aStat.RMax1());
    Polynome2dReal aPol2(aDegre,aStat.RMax2());
 
+   // Sur Pol1 on ne retient pas les term en Y^k qui sont la fonction correspondant a X=0
    INT aNbInc =0;
    for (INT k=0; k<aPol1.NbMonome() ; k++)
    {
@@ -616,7 +816,8 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
           Pt2dr aQ2 = aSolApprox->EPI2().Direct(itC->P2());
 
           REAL aResidu = ElAbs(aQ1.y-aQ2.y);
-          aPdsResidu =  1/sqrt(ElSquare(aResidu)+ElSquare(aResiduMin));
+          // aPdsResidu =  1/sqrt(ElSquare(aResidu)+ElSquare(aResiduMin));
+          aPdsResidu =  1/(ElSquare(aResidu)+ElSquare(aResiduMin));
       }
       Pt2dr aP1 = ( itC->P1() -aStat.Cdg1()) / aDir1;
       Pt2dr aP2 = ( itC->P2() -aStat.Cdg2()) / aDir2;
@@ -635,6 +836,9 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
          const Monome2dReal & aMon2 = aPol2.KthMonome(k);
          aDVP[aNbInc++] = aMon2(aP2);
       }
+      // Equation 
+      //  y1 =  Som(a1 X1^i Y1 ^j) + Som(a2 X2^i Y2 ^j) 
+      //        i!=0
       // aSys->GSSR_AddNewEquation(itC->Pds()*aPdsResidu,aDVP,aP1.y);
       aSys.PushEquation(aVecPds,aP1.y,itC->Pds()*aPdsResidu);
    }
@@ -646,22 +850,24 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
 
    aNbInc=0;
    {
-   for (INT k=0; k<aPol1.NbMonome() ; k++)
-   {
-        const Monome2dReal & aMon1 = aPol1.KthMonome(k);
-        if (aMon1.DegreX() != 0)
-        {
-            aPol1.SetCoeff(k,aSol.data()[aNbInc++]);
-        }
-        else
-            aPol1.SetCoeff(k,(aMon1.DegreY() == 1)*aStat.RMax1());
+      for (INT k=0; k<aPol1.NbMonome() ; k++)
+      {
+           const Monome2dReal & aMon1 = aPol1.KthMonome(k);
+           if (aMon1.DegreX() != 0)
+           {
+               aPol1.SetCoeff(k,aSol.data()[aNbInc++]);
+           }
+           else
+           {
+               aPol1.SetCoeff(k,(aMon1.DegreY() == 1)*aStat.RMax1());
+           }
 
-        aPol2.SetCoeff(k,aSol.data()[aNbInc++]);
+           aPol2.SetCoeff(k,aSol.data()[aNbInc++]);
+      }
    }
-   }
 
 
-   int aDeltaDeg = 2;
+
 
    Polynome2dReal aPolInv1(aDegre+aDeltaDeg,aRMaxInv1);
    int aNbIncInv = aPolInv1.NbMonome();
@@ -739,7 +945,8 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
                           const ElPackHomologue & aPackH,
                           INT   aDegre,
                           Pt2dr aDir1,
-                          Pt2dr aDir2
+                          Pt2dr aDir2,
+                          int   aDeltaDeg
                      )
 {
       return   PolynomialFromHomologue
@@ -748,7 +955,8 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
                      (CpleEpipolaireCoord *) 0,
                      1.0,
                      aPackH, aDegre,
-                     aDir1,aDir2
+                     aDir1,aDir2,
+                     aDeltaDeg
                 );
 }
 
@@ -759,12 +967,13 @@ CpleEpipolaireCoord  * CpleEpipolaireCoord::PolynomialFromHomologue
                           const ElPackHomologue & aPackHL2,
                           INT   aDegreL2,
                           Pt2dr aDir1,
-                          Pt2dr aDir2
+                          Pt2dr aDir2,
+                          int   aDeltaDeg
                      )
 {
-    CpleEpipolaireCoord * aSol1 = PolynomialFromHomologue(true,aPackHL1,aDegreL1,aDir1,aDir2);
+    CpleEpipolaireCoord * aSol1 = PolynomialFromHomologue(true,aPackHL1,aDegreL1,aDir1,aDir2,aDeltaDeg);
 
-    CpleEpipolaireCoord * aSol2 =  PolynomialFromHomologue(true,aSol1,0.5,aPackHL2,aDegreL2,aDir1,aDir2);
+    CpleEpipolaireCoord * aSol2 =  PolynomialFromHomologue(true,aSol1,0.5,aPackHL2,aDegreL2,aDir1,aDir2,aDeltaDeg);
     delete aSol1;
 
     return aSol2;

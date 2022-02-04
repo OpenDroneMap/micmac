@@ -14,7 +14,8 @@ class  	Eigen::SimplicialLLT< _Matri
 #include "ExternalInclude/Eigen/Eigenvalues" 
 #include "ExternalInclude/Eigen/SparseCholesky"
 
-#include "Externall/eigen-git-mirror-master/unsupported/Eigen/src/SparseExtra/MarketIO.h"
+// #include "External/eigen-git-mirror-master/unsupported/Eigen/src/SparseExtra/MarketIO.h"
+#include "ExternalInclude/MarketIO.h"
 #include "ExternalInclude/Eigen/LU"
 
 
@@ -33,10 +34,10 @@ namespace MMVII
 class cAppli_MMVII_TestEigen : public cMMVII_Appli
 {
      public :
-        cAppli_MMVII_TestEigen(int argc,char** argv,const cSpecMMVII_Appli & aSpec) ;
+        cAppli_MMVII_TestEigen(const std::vector<std::string> &  aVArgs,const cSpecMMVII_Appli & aSpec) ;
         int Exe() override ;
         cCollecSpecArg2007 & ArgObl(cCollecSpecArg2007 & anArgObl) override {return anArgObl;}
-        cCollecSpecArg2007 & ArgOpt(cCollecSpecArg2007 & anArgOpt);// override {return anArgOpt;}
+        cCollecSpecArg2007 & ArgOpt(cCollecSpecArg2007 & anArgOpt) override;// override {return anArgOpt;}
 
         void T1(); ///< Un test de la doc
         void TestRawData(); ///< Test sur l'import des raw data
@@ -61,8 +62,8 @@ cCollecSpecArg2007 & cAppli_MMVII_TestEigen::ArgOpt(cCollecSpecArg2007 & anArgOp
 }
 
 
-cAppli_MMVII_TestEigen::cAppli_MMVII_TestEigen (int argc,char **argv,const cSpecMMVII_Appli & aSpec) :
-  cMMVII_Appli  (argc, argv,aSpec),
+cAppli_MMVII_TestEigen::cAppli_MMVII_TestEigen (const std::vector<std::string> &  aVArgs,const cSpecMMVII_Appli & aSpec) :
+  cMMVII_Appli  (aVArgs,aSpec),
   mTestRawD     (false),
   mNbCho        (-1)
 {
@@ -92,7 +93,7 @@ void cAppli_MMVII_TestEigen::T1()
   m(1,0) = 2.5;
   m(0,1) = -1;
   m(1,1) = m(1,0) + m(0,1);
-  std::cout << m << std::endl;
+  StdOut()  << m << "\n";;
 
 }
 
@@ -114,14 +115,14 @@ void cAppli_MMVII_TestEigen::TestRawData()
         aDIM.SetV(aP,10*aP.x() + aP.y());
 
     {
-       std::cout << "RowMajor SzY SzX \n";
+       StdOut() << "RowMajor SzY SzX \n";
        Map<Matrix<double,Dynamic,Dynamic,RowMajor> > aMap(aDIM.RawDataLin(),aSz.y(),aSz.x());
-       std::cout << aMap << std::endl;
+       StdOut() << aMap << "\n";
     }
     {
-       std::cout << "ColumnMajor SzX SzY \n";
+       StdOut() << "ColumnMajor SzX SzY \n";
        Map<Matrix<double,Dynamic,Dynamic> > aMap(aDIM.RawDataLin(),aSz.x(),aSz.y());
-       std::cout << aMap << std::endl;
+       StdOut() << aMap << "\n";
     }
 }
 
@@ -130,11 +131,11 @@ void cAppli_MMVII_TestEigen::BenchCho()
     SparseMatrix<double> aS2;
     loadMarket(aS2,mNameMatMark);
 
-    std::cout << " NB " << aS2.rows() << " " << aS2.cols() << "\n";
+    StdOut() << " NB " << aS2.rows() << " " << aS2.cols() << "\n";
     double aT1 = SecFromT0();
     SimplicialLDLT<SparseMatrix<double> > aDLT(aS2);
     double aT2 = SecFromT0();
-    std::cout << "DONE " <<  aT2 - aT1 << "\n";
+    StdOut() << "DONE " <<  aT2 - aT1 << "\n";
 }
 
 void cAppli_MMVII_TestEigen::TCho()
@@ -164,11 +165,11 @@ void cAppli_MMVII_TestEigen::TCho()
         }
     }
     VectorXd aB = m * aSol;
-    std::cout << m << std::endl;
+    StdOut() << m << "\n";
 
     SelfAdjointEigenSolver<MatrixXd> aSAES(m);
-    std::cout << "The eigenvalues of A are: " << aSAES.eigenvalues().transpose() << std::endl;
-    std::cout << aSAES.eigenvectors() << "\n";
+    StdOut() << "The eigenvalues of A are: " << aSAES.eigenvalues().transpose() << "\n";
+    StdOut() << aSAES.eigenvectors() << "\n";
     double aDetEV =  aSAES.eigenvalues().prod();
 
     std::vector<Triplet<double> > aVT; 
@@ -188,11 +189,11 @@ void cAppli_MMVII_TestEigen::TCho()
 
     SimplicialLDLT<SparseMatrix<double> > aDLT(aSM);
     // aDLT.compute(m);
-    std::cout << "Det= " << aDLT.determinant()  << " " << aDetEV << "\n";
+    StdOut() << "Det= " << aDLT.determinant()  << " " << aDetEV << "\n";
 
     VectorXd aSolCho = aDLT.solve(aB);
 
-    std::cout << "Check Sol " << (aSolCho - aSol).norm() << "\n";
+    StdOut() << "Check Sol " << (aSolCho - aSol).norm() << "\n";
 }
     
 
@@ -200,9 +201,9 @@ void cAppli_MMVII_TestEigen::TCho()
 
 
 
-tMMVII_UnikPApli Alloc_MMVII_TestEigen(int argc,char ** argv,const cSpecMMVII_Appli & aSpec)
+tMMVII_UnikPApli Alloc_MMVII_TestEigen(const std::vector<std::string> &  aVArgs,const cSpecMMVII_Appli & aSpec)
 {
-   return tMMVII_UnikPApli(new cAppli_MMVII_TestEigen(argc,argv,aSpec));
+   return tMMVII_UnikPApli(new cAppli_MMVII_TestEigen(aVArgs,aSpec));
 }
 
 

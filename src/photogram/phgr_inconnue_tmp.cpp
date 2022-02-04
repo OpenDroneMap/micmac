@@ -1433,7 +1433,6 @@ bool OkReproj
 bool ResidualStepByStep = false;
 
 
-
 Pt3dr  cManipPt3TerInc::CalcPTerInterFaisceauCams
        (
            const cRapOnZ *      aRAZ,
@@ -1446,6 +1445,7 @@ Pt3dr  cManipPt3TerInc::CalcPTerInterFaisceauCams
            std::string *             aMesPb
        )
 {
+  
    if (aMesPb) *aMesPb="NoPb";
 
    aParam.mHasResolMoy = false;
@@ -1461,6 +1461,7 @@ Pt3dr  cManipPt3TerInc::CalcPTerInterFaisceauCams
 
 
    static int aCpt = 0; aCpt++;
+// if (MPD_MM()) std::cout << "aCptaCptaCptaCpt " << aCpt << "\n";
 
 
    for (int aK=0 ; aK<int(aVCC.size()) ; aK++)
@@ -1659,9 +1660,11 @@ Pt3dr  cManipPt3TerInc::CalcPTerInterFaisceauCams
                           && (aWhy!= "DistCheck")
                        )
                     {
-                       ELISE_ASSERT(false,"Why NotVisible not handled");
+                         // ELISE_ASSERT(false,"Why NotVisible not handled");
+			//   std::cout <<  "REPPPROJjjj PB\n";
                     }
                 }
+		// if (*aMesPb =="NoPb")
                 *aMesPb = std::string("MesNotVisIm, for Im num : ") + ToString(aKPb);
              }
          }
