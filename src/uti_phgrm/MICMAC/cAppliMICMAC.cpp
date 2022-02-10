@@ -2223,9 +2223,22 @@ void cAppliMICMAC::ExeProcessParallelisable
            }
        } 
        fic.close();
-       mCout << " ---Launch processes through the Makefile\n";
 
-	bool makeSucceeded = launchMake( nomMakefile, "", ByProcess().Val() );
+       //// MODIFiED
+       //set number of process according to env variable MICMAC_MAX_THREADS if defined.
+       int thread_count;
+       const char* env_var = std::getenv("MICMAC_MAX_THREADS");
+       if (env_var != NULL)
+       {
+            thread_count = atoi(env_var);
+       }
+       else
+       {
+            thread_count = ByProcess().Val();
+       }
+       mCout << " ---Launch " << thread_count << " processes through the Makefile\n";
+       bool makeSucceeded = launchMake( nomMakefile, "", thread_count );
+       //// END MODIFIED
 
        if (StopOnEchecFils().Val())
         {    
