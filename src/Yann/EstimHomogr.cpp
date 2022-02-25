@@ -124,6 +124,8 @@ class cAppli_YannViewIntersect{
 	   std::string mBuffer;                        // Buffer (pos ou neg) sur le champ
 	   std::string mAngle;                         // Angle de visée maximal
 	   std::string mDebug;                         // Pour générer des ply des cones
+	   std::string mConeSzDebug;                   // Taille des cones dans les ply
+	   std::string mXmlSize;                       // Nombre maximal paires dans xml
 	   cElemAppliSetFile mEASF;                    // Pour gerer un ensemble d'images
 	   cInterfChantierNameManipulateur * mICNM;    // Name manipulateur
 };
@@ -282,8 +284,11 @@ Pt3dr sightDirectionVector(CamStenope * aCam){
 
 // --------------------------------------------------------------------------------------
 // Fonction d'intersection d'un triangle et d'un segment
+// 1 triangle : pt1, pt2, pt3
+// 1 segment : ps1, ps2
+// 1 profondeur maximale d'intersection (par rapport aux sommets pt1 et ps1)
 // --------------------------------------------------------------------------------------
-bool segmentInTriangle(Pt3dr pt1, Pt3dr pt2, Pt3dr pt3, Pt3dr ps1, Pt3dr ps2){
+bool segmentInTriangle(Pt3dr pt1, Pt3dr pt2, Pt3dr pt3, Pt3dr ps1, Pt3dr ps2, double max_depth){
 	
 	double x1  = pt1.x; double y1  = pt1.y; double z1  = pt1.z;
 	double x2  = pt2.x; double y2  = pt2.y; double z2  = pt2.z;
@@ -328,30 +333,46 @@ bool segmentInTriangle(Pt3dr pt1, Pt3dr pt2, Pt3dr pt3, Pt3dr ps1, Pt3dr ps2){
 	double dot1 = pv1x*pv2x + pv1y*pv2y + pv1z*pv2z;
 	double dot2 = pv2x*pv3x + pv2y*pv3y + pv2z*pv3z;
 	
-	return ((dot1 >= 0) && (dot2 >= 0));
+	if (!((dot1 >= 0) && (dot2 >= 0))) return false;
+		
+	// Test de profondeur maximale
+	if (sqrt(pow(xi- x1,2) + pow(yi- y1,2) + pow(zi- z1,2)) > max_depth) return false;
+	if (sqrt(pow(xi-p0x,2) + pow(yi-p0y,2) + pow(zi-p0z,2)) > max_depth) return false;
+	
+	return true;
 	
 }
 
 // --------------------------------------------------------------------------------------
 // Fonction de test d'intersection des surfaces deux cones
+// Inputs :
+//  - Cone 1 (liste de points 3D)
+//  - Cone 2 (liste de points 3D)
+//  - max_depth : profondeur maximale de l'intersection
 // --------------------------------------------------------------------------------------
-bool sightIntersect(std::vector<Pt3dr>& cone1, std::vector<Pt3dr>& cone2){
+bool sightIntersect(std::vector<Pt3dr>& cone1, std::vector<Pt3dr>& cone2, double max_depth){
+	
 	unsigned N1 = cone1.size();
 	unsigned N2 = cone2.size();
+	
+	
 	Pt3dr ps1 = cone1.at(0);
 	Pt3dr pt1 = cone2.at(0);
 	for (unsigned i1=1; i1<N1; i1++){
 		Pt3dr ps2 = cone1.at(i1);
+		
 		for (unsigned i2=1; i2<N2-1; i2++){
 			 Pt3dr pt2 = cone2.at(i2);
 			 Pt3dr pt3 = cone2.at(i2+1);
-			 if (segmentInTriangle(pt1, pt2, pt3, ps1, ps2)){
+
+			 if (segmentInTriangle(pt1, pt2, pt3, ps1, ps2, max_depth)){
 				return true;
 			}
 		}
 	} 
 	return false;
 }
+
 
 
 // --------------------------------------------------------------------------------------
@@ -377,9 +398,9 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 					<<  EAM(mRes,"Pts", "10", "Number of discretized points on fields of view (default 10)")
 					<<  EAM(mBuffer,"Buffer", "None", "Signed buffer around camera field of view (default 0.0 PX)")
 					<<  EAM(mDebug,"Ply", "0", "Set Ply=1 to generate ply files of fields of view")
+					<<  EAM(mConeSzDebug,"SzPly", "1", "Scale for fields of view export in ply (default 1.0)")
+					<<  EAM(mXmlSize,"XmlMax", "100000", "Max. number of pairs in an xml file (default 100 000)")
           			<<  EAM(mCpleFile,"Out", "None", "Name of output file (default CpleFrom[OriName].xml)"));
-	
-	
 	
 	// ---------------------------------------------------------------
 	// Lecture des images
@@ -428,7 +449,17 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 		buffer = std::stod(mBuffer);
 	}
 	
-	std::string name_cple = +"CpleFrom"+mDirOri+".xml";
+	double ply_size_cone = 1.0;
+	if (EAMIsInit(&mConeSzDebug)){
+		ply_size_cone = std::stod(mConeSzDebug);
+	}
+	
+	unsigned max_xml = 100000;
+	if (EAMIsInit(&mXmlSize)){
+		max_xml = std::stoi(mXmlSize);
+	}
+	
+	std::string name_cple = +"CpleFrom"+mDirOri;
 	if (EAMIsInit(&mCpleFile)){
 		name_cple = mCpleFile;
 	}	
@@ -450,17 +481,35 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 	// ---------------------------------------------------------------
 	
 	ofstream myfile;
-	myfile.open(name_cple);
 	
+	unsigned nb_pairs_in_xml = 0;
+	myfile.open(name_cple+"_0.xml");
 	myfile << "<?xml version=\"1.0\" ?>\n";
 	myfile << "<SauvegardeNamedRel>\n";
 	
+	unsigned nb_file = 0;
 	unsigned nb_pair_found = 0;
 	unsigned nb_pair_found_for_im = 0;
 	
 	double min_dot_product = cos(max_angle*3.14159/180.0);
 	
-	int factor = 200;   //   Attention : à régler !
+	int factor = 1e9;   //   Attention : à régler !
+	
+
+	// ---------------------------------------------------------------
+	// Précalcul des cones de visée
+	// ---------------------------------------------------------------
+	std::vector<std::vector<Pt3dr>> CONES;
+	std::vector<CamStenope*> CAM;
+	for (unsigned i=0; i<N; i++){
+			aNameIn = mEASF.SetIm()[0][i];
+			cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc("./");
+			StdCorrecNameOrient(mDirOri, anICNM->Dir());
+			CamStenope * aCam = CamOrientGenFromFile("Ori-"+mDirOri+"/Orientation-"+aNameIn+".xml", anICNM);
+			CONES.push_back(discretizedFieldOfView(aCam, pts, factor, buffer)); CAM.push_back(aCam);
+			if ((i % 100 == 0) && (i>0)) std::cout << "Precalcul cones... [" << i << "/" << N << "]" << std::endl;
+	}
+	std::cout << "Precalcul cones... [" << N << "/" << N << "]" << std::endl;
 
 	// ---------------------------------------------------------------
 	// Loop on image 1
@@ -470,18 +519,12 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 		aNameIn = mEASF.SetIm()[0][i];
 		std::cout << "[" << i << "/" << N << "]  " <<  aNameIn << "      ";
 		
-		cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc("./");
-		StdCorrecNameOrient(mDirOri, anICNM->Dir());
-		CamStenope * aCam = CamOrientGenFromFile("Ori-"+mDirOri+"/Orientation-"+aNameIn+".xml", anICNM);
+		CamStenope * aCam = CAM.at(i);
 		
 		Pt3dr p1 = aCam->PseudoOpticalCenter();
 		Pt3dr v1 = sightDirectionVector(aCam);
 		
-		std::vector<Pt3dr> F1 = discretizedFieldOfView(aCam, pts, factor, buffer);
-		
-		if (debug){
-			fieldOfView2Ply(F1, "AperiCone_"+aNameIn+".ply");
-		}
+		std::vector<Pt3dr> F1 = CONES.at(i);
 		
 		// ---------------------------------------------------------------
 		// Loop on image 2
@@ -491,7 +534,7 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 			if (i == j) continue;
 			
 			std::string anOtherNameIn = mEASF.SetIm()[0][j];
-			CamStenope * anOtherCam = CamOrientGenFromFile("Ori-"+mDirOri+"/Orientation-"+anOtherNameIn+".xml", anICNM);
+			CamStenope * anOtherCam  = CAM.at(j);
 			
 			// ---------------------------------------------------------------
 			// Distance test
@@ -512,24 +555,41 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 			// ---------------------------------------------------------------
 			// Inclusion test
 			// ---------------------------------------------------------------
-			// TO DO !
-		
+			bool mutual = (aCam->PIsVisibleInImage(p2) || anOtherCam->PIsVisibleInImage(p1));
 			
 			// ---------------------------------------------------------------
 			// Sight intersection test
 			// ---------------------------------------------------------------
-			std::vector<Pt3dr> F2 = discretizedFieldOfView(anOtherCam, pts, factor, buffer);
-			if (!sightIntersect(F1, F2)){
+			std::vector<Pt3dr> F2 = CONES.at(j);
+			if (!(sightIntersect(F1, F2, max_depth) || mutual)){
 				continue;
 			}
 			
 			myfile << "<Cple>" << aNameIn << " " << anOtherNameIn << "</Cple>\n"; nb_pair_found_for_im ++;
+			nb_pairs_in_xml ++;
+			
+			if (nb_pairs_in_xml >= max_xml){
+				myfile << "</SauvegardeNamedRel>\n";
+				myfile.close();	
+				nb_file ++;
+				myfile.open(name_cple+"_"+std::to_string(nb_file)+".xml");
+				myfile << "<?xml version=\"1.0\" ?>\n";
+				myfile << "<SauvegardeNamedRel>\n";
+				nb_pairs_in_xml = 0;
+			}
+			
 			
 		}	
 		
 		nb_pair_found += nb_pair_found_for_im;
 		double frac = ((int)(1000*nb_pair_found/(N*(N-1)/2.0)))/10.0;
-		std::cout << nb_pair_found_for_im << " homolog pair(s)    [" << frac << " %]"  << std::endl;
+		std::cout << nb_pair_found_for_im << " new pair(s)    [" << frac << " %]"  << std::endl;
+		
+				
+		if (debug){
+			std::vector<Pt3dr> F = discretizedFieldOfView(aCam, pts, ply_size_cone, buffer);
+			fieldOfView2Ply(F, "AperiCone_"+aNameIn+".ply");
+		}
 		
 	}
 	
@@ -539,7 +599,10 @@ cAppli_YannViewIntersect::cAppli_YannViewIntersect(int argc, char ** argv){
 	double frac = ((int)(1000*nb_pair_found/(N*(N-1)/2.0)))/10.0;
 	std::cout << "-----------------------------------------------------------------------"               << std::endl;
 	std::cout << "NUMBER OF PAIRS FOUND       " << nb_pair_found << "                [" << frac << " %]" << std::endl;
-	std::cout << "Output file [" << name_cple << "] generated"                                             << std::endl;
+	std::cout << "Output file(s) :"                                                                         << std::endl;
+	for (unsigned k=0; k<=nb_file; k++){
+			std::cout << "  - " << name_cple+"_"+std::to_string(k)+".xml"                                << std::endl;
+	}
 	std::cout << "-----------------------------------------------------------------------"               << std::endl;
 
 }
@@ -704,7 +767,6 @@ cAppli_YannInvHomolHomog::cAppli_YannInvHomolHomog(int argc, char ** argv){
 	// Correction éventuelle de la distorsion
 	// ---------------------------------------------------------------
 
-	
 	CamStenope * aCam = 0;
 	
 
@@ -714,7 +776,6 @@ cAppli_YannInvHomolHomog::cAppli_YannInvHomolHomog(int argc, char ** argv){
 		aCam = Std_Cal_From_File(mCalib);
 	}
 	
-	
 	// ---------------------------------------------------------------
 	// Gestion du répertoire de sortie
 	// ---------------------------------------------------------------
@@ -723,7 +784,6 @@ cAppli_YannInvHomolHomog::cAppli_YannInvHomolHomog(int argc, char ** argv){
 		output_folder = mFolderOut;
 	}
 
-	
 	// ---------------------------------------------------------------
 	// Impression console pour confirmation des paramètres
 	// ---------------------------------------------------------------
