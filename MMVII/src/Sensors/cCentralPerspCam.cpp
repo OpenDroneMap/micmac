@@ -13,77 +13,16 @@
 
 namespace MMVII
 {
-
-template <class Type,const int Dim> class cDataInvertOfMapping : public cDataInvertibleMapping <Type,Dim>
-{
-   public :
-         typedef  cDataInvertibleMapping<Type,Dim>  tIMap;
-         typedef cPtxd<Type,Dim>                    tPt;
-         typedef std::vector<tPt>                   tVecPt;
-
-         cDataInvertOfMapping(const tIMap * aMapToInv,bool toAdopt);
-         ~cDataInvertOfMapping();
-
-         const  tVecPt &  Inverses(tVecPt &,const tVecPt & ) const;
-         const  tVecPt &  Values(tVecPt &,const tVecPt & ) const;
-   private :
-         const tIMap * mMapToInv;
-         bool          mAdopted;
-};
-
-
-template <class Type,const int Dim> 
-    cDataInvertOfMapping<Type,Dim>::cDataInvertOfMapping(const tIMap * aMapToInv,bool toAdopt) :
-         mMapToInv(aMapToInv),
-         mAdopted (toAdopt)
-{
-}
-
-template <class Type,const int Dim> 
-    cDataInvertOfMapping<Type,Dim>::~cDataInvertOfMapping()
-{
-    if (mAdopted)
-       delete mMapToInv;
-}
-
-template <class Type,const int Dim> 
-         const  std::vector<cPtxd<Type,Dim>>  & 
-                 cDataInvertOfMapping<Type,Dim>::Inverses(tVecPt & aVOut,const tVecPt & aVIn) const
-{
-    return  mMapToInv->Values(aVOut,aVIn);
-}
-
-template <class Type,const int Dim> 
-         const  std::vector<cPtxd<Type,Dim>>  & 
-                 cDataInvertOfMapping<Type,Dim>::Values(tVecPt & aVOut,const tVecPt & aVIn) const
-{
-    return  mMapToInv->Inverses(aVOut,aVIn);
-}
-
-
-
-
-template  class  cDataInvertOfMapping<tREAL8,2>;
-
-/*template
-template <class Type,const int Dim> class cDeformDataBoundedSet : public cDataBoundedSet<Type,Dim>
-{
-     public :
-         typedef  cDataBoundedSet<Type,Dim>         tSetUp;
-         typedef  cDataInvertibleMapping<Type,Dim>  tIMap;
-
-
-};
-*/
-
-
-
-class cPixelSpace : public cDataBoundedSet<tREAL8,2>
+class cPixelDomain ;
+class cCalibStenPerfect ;
+class cPerspCamIntrCalib ;
+	
+class cPixelDomain : public cDataBoundedSet<tREAL8,2>
 {
       public :
-           cPixelSpace(const cPt2di &aSz);
-           virtual ~ cPixelSpace();
-           virtual cPixelSpace *  Dup_PS () const;  ///< default work because deleted in mother class
+           cPixelDomain(const cPt2di &aSz);
+           virtual ~ cPixelDomain();
+           virtual cPixelDomain *  Dup_PS () const;  ///< default work because deleted in mother class
 
       private :
            cBox2di    mBox;
@@ -99,12 +38,13 @@ class cCalibStenPerfect : public cDataInvertibleMapping<tREAL8,2>
          typedef std::vector<tPt>     tVecPt;
 
 	 cCalibStenPerfect(tScal aFoc,const tPt & aPP);
-         cCalibStenPerfect(const cCalibStenPerfect & aPS);  ///< default work because deleted in mother class
+         cCalibStenPerfect(const cCalibStenPerfect & aPS);  ///< default wouldnt work because deleted in mother class
+	 cCalibStenPerfect MapInverse() const;
+
+	 tPt  Value(const tPt& aPt) const override {return mPP + aPt*mF;}
 	 const  tVecPt &  Inverses(tVecPt &,const tVecPt & ) const override;
 	 const  tVecPt &  Values(tVecPt &,const tVecPt & ) const override;
 
-	 const tPt  &PP() const {return mPP;} ///< accessor
-	 const tScal  F() const {return mF;} ///< accessor
      private :
          tScal  mF;   ///<  Focal
          tPt    mPP;  ///<  Principal point
@@ -142,7 +82,7 @@ class cPerspCamIntrCalib : public cDataMapping<tREAL8,3,2>
 		  const cPt3di & aDeg,                ///< degrees of distorstion  Rad/Dec/Univ
 		  const std::vector<double> & aVObs,  ///< vector of constants, or void
 		  const cCalibStenPerfect &,           ///< Calib w/o dist
-                  const  cPixelSpace  &,              ///< sz, domaine of validity in pixel
+                  const  cPixelDomain  &,              ///< sz, domaine of validity in pixel
 		  const cPt3di & aDegPseudoInv,       ///< degree of inverse approx by least square
 		  int aSzBuf                          ///< sz of buffers in computatio,
             );
@@ -153,14 +93,16 @@ class cPerspCamIntrCalib : public cDataMapping<tREAL8,3,2>
 	    // const  tVecOut &  Inverses(tVecIn &,const tVecOut & ) const;
 	private :
 
-            cPixelSpace *                        mPixSpace;   // validity domain in pixel
             // cSphereBoundedSet<tREAL8,2>          mPNormSpace; // validity domain pixel-normalize (PP/F) space
 
 	    eProjPC                              mTypeProj;
             cDataMapCalcSymbDer<tREAL8,3,2>*     mDir_Proj;
             cDataNxNMapCalcSymbDer<tREAL8,2>*    mDir_Dist_Val;
             cDataNxNMapCalcSymbDer<tREAL8,2>*    mDir_Dist_Der;
-	    cCalibStenPerfect                    mCSPerfect;
+	    cCalibStenPerfect                    mCSPerfect;    ///<
+	    cCalibStenPerfect                    mCSPInv;
+            cPixelDomain *                       mPixDomain;   ///< validity domain in pixel
+	    cDataMappedBoundedSet<tREAL8,2>*     mPhgrDomain;  ///<  validity in F/PP corected space,
             // cDataMapCalcSymbDer<tREAL8,3,2>   * mProjInv;
 };
 
@@ -170,18 +112,19 @@ cPerspCamIntrCalib::cPerspCamIntrCalib
       const cPt3di & aDeg,                ///< degrees of distorstion  Rad/Dec/Univ
       const std::vector<double> & aVObs,  ///< vector of constants, or void
       const cCalibStenPerfect & aCSP,           ///< Calib w/o dist
-      const  cPixelSpace  & aPixSpace,              ///< sz, domaine of validity in pixel
+      const  cPixelDomain  & aPixDomain,              ///< sz, domaine of validity in pixel
       const cPt3di & aDegPseudoInv,       ///< degree of inverse approx by least square
       int aSzBuf                          ///< sz of buffers in computation
 )  :
-    mPixSpace       (nullptr),
     mTypeProj       (aTypeProj),
     mDir_Proj       (nullptr),
     mDir_Dist_Val   (nullptr),
     mDir_Dist_Der   (nullptr),
-    mCSPerfect      (aCSP)
+    mCSPerfect      (aCSP),
+    mCSPInv         (mCSPerfect.MapInverse()),
+    mPixDomain      (aPixDomain.Dup_PS()),
+    mPhgrDomain     (new cDataMappedBoundedSet<tREAL8,2>(mPixDomain,&mCSPInv,false,false))
 {
-     mPixSpace =  aPixSpace.Dup_PS();
 }
 
 
@@ -199,6 +142,12 @@ cCalibStenPerfect::cCalibStenPerfect(tScal aFoc,const tPt & aPP) :
 cCalibStenPerfect::cCalibStenPerfect(const cCalibStenPerfect & aCS) :
     cCalibStenPerfect(aCS.mF,aCS.mPP)
 {
+}
+
+cCalibStenPerfect cCalibStenPerfect::MapInverse() const
+{
+    //  aQ= PP+ aP * F  ;  aP = (aQ-PP) /aF
+    return  cCalibStenPerfect(  1.0/mF  ,  -mPP/mF  );
 }
 
 const  typename cCalibStenPerfect::tVecPt &  cCalibStenPerfect::Values(tVecPt & aVOut,const tVecPt & aVIn) const
@@ -230,7 +179,6 @@ const  typename cCalibStenPerfect::tVecPt &  cCalibStenPerfect::Inverses(tVecPt 
      }
      return aVOut;
 }
-
 
 
 
