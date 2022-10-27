@@ -1,5 +1,8 @@
 #ifndef  _MMVII_Images_H_
 #define  _MMVII_Images_H_
+
+#include "cMMVII_Appli.h"
+
 namespace MMVII
 {
 
@@ -389,7 +392,11 @@ template <class Type,const int Dim> class cDataTypedIm : public cDataGenUnTypedI
         ///< Test 4 writing
         void AssertValueOk(const tBase & aV) const
         {
-             MMVII_INTERNAL_ASSERT_tiny(ValueOk(aV),"Invalid Value for image");
+             if (!ValueOk(aV))
+	     {
+                 StdOut()  << " Value=" << aV << "\n";
+                 MMVII_INTERNAL_ASSERT_tiny(ValueOk(aV),"Invalid Value for image");
+	     }
         }
 
         bool   mDoAlloc;  ///< was data allocated by the image (must know 4 free)

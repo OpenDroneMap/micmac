@@ -1,6 +1,9 @@
 #ifndef  _MMVII_MAPPINGS_H_
 #define  _MMVII_MAPPINGS_H_
 
+
+#include "MMVII_ImageInfoExtract.h"
+
 /* For in & out computation of vector of points, do we use static buffer or 
    do each object has its own buffer. First option is more economic, but can lead to
    sides effect if buffering is not well understood . So for now I maintain the possibility
@@ -151,6 +154,8 @@ template <class Type,const int Dim> class cDataBoundedSet : public cMemCheck
 
       /// Does it belong to the set;  default =belong to box,  defined from InsidenessWithBox
       bool InsideWithBox(const tPt &) const;
+      /// Does it belong to the set;  default =belong to box,  defined from InsidenessWithBox
+      bool InsideWithBox(const cTriangle<Type,Dim> &) const;
       /// Does it belong to the set;  default =true, defined form Insideness
       bool Inside(const tPt &) const;
 
@@ -306,6 +311,8 @@ template <class Type,const int DimIn,const int DimOut> class cDataMapping : publ
       /// 
       cTplBox<Type,DimOut> BoxOfCorners(const cTplBox<Type,DimIn>&) const;
 
+
+      cTriangle<Type,DimOut>  TriValue(const cTriangle<Type,DimIn> &) const;
 
       /// compute diffenrentiable method , default = erreur
     protected :

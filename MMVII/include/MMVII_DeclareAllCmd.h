@@ -1,6 +1,8 @@
 #ifndef  _MMVII_DeclareAllCmd_H_
 #define  _MMVII_DeclareAllCmd_H_
 
+#include "cMMVII_Appli.h"
+
 namespace MMVII
 {
 
@@ -46,6 +48,9 @@ extern cSpecMMVII_Appli  TheSpecMeshDev;
 extern cSpecMMVII_Appli  TheSpecGenMeshDev; 
 extern cSpecMMVII_Appli  TheSpecTestCovProp; 
 extern cSpecMMVII_Appli  TheSpec_OriConvV1V2; 
+extern cSpecMMVII_Appli  TheSpecMeshCheck; 
+extern cSpecMMVII_Appli  TheSpecProMeshImage; 
+
 
 };
 

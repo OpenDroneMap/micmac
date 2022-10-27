@@ -1,6 +1,8 @@
 #ifndef  _MMVII_SysSurR_H_
 #define  _MMVII_SysSurR_H_
 
+#include "SymbDer/SymbDer_Common.h"
+#include "MMVII_Matrix.h"
 
 namespace MMVII
 {
@@ -86,7 +88,8 @@ template <class Type> class cResolSysNonLinear
 
 	       //    frozen  checking
 
-	   void  SetFrozenVar(int aK,const  Type &);  ///< indicate it var must be frozen /unfrozen
+	   void  SetFrozenVar(int aK,const  Type &);  ///< seti var var frozen /unfrozen
+	   void  SetFrozenVarCurVal(int aK);  ///< idem to current val
 	       // frozen for  cObjWithUnkowns
 	   void  SetFrozenVar(tObjWUk & anObj,const  Type &);  ///< indicate it var must be frozen /unfrozen
 	   void  SetFrozenVar(tObjWUk & anObj,const  Type *,size_t);  ///< indicate it var must be frozen /unfrozen

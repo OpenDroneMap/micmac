@@ -1,4 +1,4 @@
-#include "include/MMVII_all.h"
+#include "MMVII_DeclareAllCmd.h"
 #include <algorithm>
 
 namespace MMVII
@@ -184,6 +184,8 @@ std::vector<cSpecMMVII_Appli *> & cSpecMMVII_Appli::InternVecAll()
         TheVecAll.push_back(&TheSpecGenMeshDev);
         TheVecAll.push_back(&TheSpecTestCovProp);
         TheVecAll.push_back(&TheSpec_OriConvV1V2);
+        TheVecAll.push_back(&TheSpecMeshCheck);
+        TheVecAll.push_back(&TheSpecProMeshImage);
 
         std::sort(TheVecAll.begin(),TheVecAll.end(),CmpCmd);
    }

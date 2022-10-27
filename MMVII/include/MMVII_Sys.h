@@ -5,6 +5,8 @@
 #include <unistd.h>
 #endif
 
+#include "MMVII_AllClassDeclare.h"
+
 namespace MMVII
 {
 
@@ -52,12 +54,6 @@ int GlobSysCall(const std::string &, bool SVP=false); ///< call system, if SVP=f
 int GlobParalSysCallByMkF(const std::string & aNameMkF,const std::list<std::string> & aListCom,int aNbProcess,bool SVP=false);
 
 
-
-/// A fake function, to stop momentarilly warnings about unused variable ...
-template <class Type> void FakeUseIt(const Type &) {}
-/** A function returning always false, use when we dont want to execute something want to compile it
- even with too "clever" compiler who would skip if (0) */
-bool NeverHappens();
 
 };
 

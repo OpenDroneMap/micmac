@@ -1,6 +1,7 @@
 #ifndef  _MMVII_PHGR_DIST_H_
 #define  _MMVII_PHGR_DIST_H_
 
+#include "MMVII_Mappings.h"
 
 namespace MMVII
 {
@@ -137,6 +138,8 @@ NS_SymbolicDerivative::cCalculator<double> * EqDeformImHomotethy(bool WithDerive
 NS_SymbolicDerivative::cCalculator<double> * EqNetworkConsDistProgCov(bool WithDerive,int aSzBuf,const cPt2di& aSzN);
 /// For propag in network  W/O covariance (i.e propagate directly the points)
 NS_SymbolicDerivative::cCalculator<double> * EqNetworkConsDistFixPoints(bool WithDerive,int aSzBuf,const cPt2di& aSzN,bool WithSimUK);
+///  idem, but more adapted to real case (as in surface devlopment)
+NS_SymbolicDerivative::cCalculator<double> * EqNetworkConsDistFixPoints(bool WithDerive,int aSzBuf,int aNbPts);
 
 
 

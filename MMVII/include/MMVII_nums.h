@@ -1,6 +1,8 @@
 #ifndef  _MMVII_nums_H_
 #define  _MMVII_nums_H_
 
+#include "MMVII_Error.h"
+
 namespace MMVII
 {
 
@@ -405,6 +407,10 @@ template <class Type> class tNumTrait : public tElemNumTrait<Type> ,
                   return (aV>=MinValue()) && (aV<=MaxValue());
                return ValidFloatValue(aV);
          }
+	 static void AssertValueOk(const tBase & aV)
+	 {
+              MMVII_INTERNAL_ASSERT_tiny(ValueOk(aV),"Bad value");
+	 }
          static Type Trunc(const tBase & aV)
          {
                if (tETrait::IsInt())

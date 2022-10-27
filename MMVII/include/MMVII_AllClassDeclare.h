@@ -1,6 +1,27 @@
 #ifndef  _MMVII_AllClassDeclare_H_
 #define  _MMVII_AllClassDeclare_H_
 
+// Header standard c++
+#include "memory.h"
+#include <memory>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <string>
+#include <typeinfo>
+#include <vector>
+#include <list>
+#include <map>
+#include <ctime>
+#include <chrono>
+#include <optional>
+#include <cmath>
+
+//========== LIB EXTEN==============
+
+
+//===========================================
+
 namespace MMVII
 {
 
@@ -92,6 +113,7 @@ template <class TypeObj,class TypeLayer>  class cLayer3D ;
 // MMVII_Matrix.h
 template <class Type> class  cDenseVect;
 
+template <class Type,const int Dim> class cTriangle ;
 
 // MMVII_Mappings.h
 template <class Type,const int Dim> class cDataBoundedSet ;

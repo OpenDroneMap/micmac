@@ -1,5 +1,6 @@
-#include "include/MMVII_all.h"
-#include "include/MMVII_TplHeap.h"
+#include "MMVII_SysSurR.h"
+#include "MMVII_TplHeap.h"
+#include "MMVII_Sys.h"
 
 
 namespace MMVII
@@ -104,7 +105,8 @@ template <class Type> void cSMLineTransf<Type>::TransfertInTriplet
 {
        for (const auto & anInd : mSetNot0.mVIndOcc)
        {
-	   aV3.push_back(cEigenTriplet<Type>(anInd,anY,mCumulLine[anInd]));
+	   if (mCumulLine[anInd]!=0) 
+	       aV3.push_back(cEigenTriplet<Type>(anInd,anY,mCumulLine[anInd]));
        }
 }
 
@@ -421,7 +423,8 @@ template <class Type>
      {
           for (const auto & aPair : mSparseLine)
           {
-	       aV3.push_back(cEigenTriplet<Type>(aPair.mInd,mY,aPair.mVal));
+               if (aPair.mVal!=0)
+	          aV3.push_back(cEigenTriplet<Type>(aPair.mInd,mY,aPair.mVal));
           }
      }
      else if  (mState==eLineSLSqtAA::eLS_TempoDense)

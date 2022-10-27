@@ -1,4 +1,6 @@
-#include "include/MMVII_all.h"
+#include "MMVII_Geom2D.h"
+#include "MMVII_Geom3D.h"
+#include "MMVII_SysSurR.h"
 
 namespace MMVII
 {
@@ -468,6 +470,36 @@ template <class Type>
     return cMapEstimate<cRot2D<Type>>::LeastSquareRefine(*this,aVIn,aVOut,aRes2,aVW);
 }
 
+template <class Type>  cRot2D<Type> cRot2D<Type>::QuickEstimate(tCRVPts aVIn,tCRVPts aVOut)
+{
+     cMapEstimate<tTypeMap>::CheckInOut(aVIn,aVOut);
+
+     cPtxd<Type,2>  aCdgI =   cPtxd<Type,2>::FromPtR(Barry(aVIn));
+     cPtxd<Type,2>  aCdgO =   cPtxd<Type,2>::FromPtR(Barry(aVOut));
+
+     // etimate rotation as weighted average  of  Rot * VIn = VOut
+     cPtxd<Type,2> aVRot(0,0);
+     for (size_t aK=0; aK<aVIn.size() ; aK++)
+     {
+            cPtxd<Type,2> aVecI =  aVIn[aK] - aCdgI;
+            cPtxd<Type,2> aVecO =  aVOut[aK] - aCdgO;
+
+            Type aW = Norm2(aVecI);
+            if  (aW>0)
+            {
+		 aVRot +=  (aVecO/aVecI) * aW;
+            }
+     }
+
+     Type aTeta = ToPolar(aVRot,Type(0.0)).y(); // vect rot to angle
+     aVRot = FromPolar(Type(1.0),aTeta);
+
+     cPtxd<Type,2>  aTr = aCdgO - aCdgI*aVRot;  // usign  Out = Tr +In* Rot
+
+     return cRot2D<Type>(aTr,aTeta);
+
+}
+
 
 template <class Type>  cRot2D<Type> cRot2D<Type>::FromMinimalSamples(const tTabMin& aTabIn,const tTabMin& aTabOut)
 {
@@ -657,6 +689,30 @@ template <class Type>   cAffin2D<Type>  cAffin2D<Type>::FromMinimalSamples(const
     return aR0ToOut* aR0ToIn.MapInverse() ;
 }
 
+template <class Type>   cAffin2D<Type>  cAffin2D<Type>:: Tri2Tri(const tTri& aTriIn,const tTri& aTriOut)
+{
+    tTabMin aTabIn {aTriIn.Pt(0) ,aTriIn.Pt(1) ,aTriIn.Pt(2) };
+    tTabMin aTabOut{aTriOut.Pt(0),aTriOut.Pt(1),aTriOut.Pt(2)};
+
+    return FromMinimalSamples(aTabIn,aTabOut);
+}
+
+template <class Type> Type cAffin2D<Type>::MinResolution() const
+{
+    //  See documentation of mmv1, appendix E, for justification of the forlua
+    
+    Type aVX2 =   SqN2(mVX) ;
+    Type aVY2 =   SqN2(mVY) ;
+
+    Type aRadical = Square(aVX2-aVY2) +4*Square(Scal(mVX,mVY));
+
+    Type aRes = (aVX2 + aVY2 - std::sqrt(aRadical)) / 2.0;
+
+    return std::sqrt(std::max(Type(0.0),aRes));
+}
+/*
+*/
+
 template <class Type>  
      cAffin2D<Type> cAffin2D<Type>::StdGlobEstimate
                         (tCRVPts aVIn,tCRVPts aVOut,Type * aRes2,tCPVVals aVWeights)
@@ -703,6 +759,11 @@ template <class Type> std::vector<cPtxd<Type,2> > RandomPtsOnCircle(int aNbPts)
   return aRes;
 }
 
+template <class Type,class tMap>  cTriangle<Type,2>  ImageOfTri(const cTriangle<Type,2> & aTri,const tMap & aMap)
+{
+     return  cTriangle<Type,2>(aMap.Value(aTri.Pt(0)),aMap.Value(aTri.Pt(1)),aMap.Value(aTri.Pt(2)));
+}
+
 
 /* ========================== */
 /*       INSTANTIATION        */
@@ -721,10 +782,11 @@ INSTANTIATE_GEOM_REAL(tREAL16)
 
 
 #define MACRO_INSTATIATE_GEOM2D_MAPPING(TYPE,TMAP,DIM)\
+template   cTriangle<TYPE,2>  ImageOfTri(const cTriangle<TYPE,2> & aTri,const TMAP & aMap);\
 template  TMAP TMAP::FromParam(const cDenseVect<TYPE> & aVec) ;\
 template  void TMAP::ToEqParam(tPt&,cDenseVect<TYPE>&,cDenseVect<TYPE> &,const tPt &,const tPt &);\
 template  TMAP TMAP::FromMinimalSamples(const tTabMin& ,const tTabMin& );\
-template TMAP TMAP::RansacL1Estimate(tCRVPts aVIn,tCRVPts aVOut,int aNbTest)
+template TMAP TMAP::RansacL1Estimate(tCRVPts aVIn,tCRVPts aVOut,int aNbTest)\
 
 
 #define MACRO_INSTATIATE_LINEAR_GEOM2D_MAPPING(TYPE,TMAP,DIM)\
@@ -738,6 +800,7 @@ template TMAP TMAP::StdGlobEstimate(tCRVPts,tCRVPts,tTypeElem*,tCPVVals,cParamCt
 
 
 #define MACRO_INSTATIATE_GEOM2D(TYPE)\
+template  cRot2D<TYPE>  cRot2D<TYPE>::QuickEstimate(tCRVPts aVIn,tCRVPts aVOut);\
 MACRO_INSTATIATE_NON_LINEAR_GEOM2D_MAPPING(TYPE,cRot2D<TYPE>,2);\
 template  cRot2D<TYPE> cRot2D<TYPE>::RandomRot(const TYPE & AmplTr);\
 MACRO_INSTATIATE_LINEAR_GEOM2D_MAPPING(TYPE,cSim2D<TYPE>,2);\

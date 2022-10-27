@@ -1,10 +1,12 @@
-#include "include/MMVII_all.h"
+
+#include "ComonHeaderSymb.h"
 #include "include/SymbDer/SymbolicDerivatives.h"
 #include "include/SymbDer/SymbDer_GenNameAlloc.h"
 #include "Formulas_ImagesDeform.h"
 #include "Formulas_CamStenope.h"
 #include "Formulas_Geom2D.h"
-
+#include "MMVII_Sys.h"
+#include "MMVII_Geom2D.h"
 
 /*
 La compil:
@@ -150,6 +152,11 @@ cCalculator<double> * EqNetworkConsDistProgCov(bool WithDerive,int aSzBuf,const 
 cCalculator<double> * EqNetworkConsDistFixPoints(bool WithDerive,int aSzBuf,const cPt2di& aSzN,bool WithSimUK)
 { 
     return StdAllocCalc(NameFormula(cNetWConsDistSetPts(aSzN,WithSimUK),WithDerive),aSzBuf);
+}
+
+cCalculator<double> * EqNetworkConsDistFixPoints(bool WithDerive,int aSzBuf,int aNbPts)
+{ 
+    return StdAllocCalc(NameFormula(cNetWConsDistSetPts(aNbPts,true),WithDerive),aSzBuf);
 }
 
 cCalculator<double> * EqDeformImHomotethy(bool WithDerive,int aSzBuf)
@@ -455,8 +462,9 @@ int cAppliGenCode::Exe()
        GenCodesFormula((tREAL8*)nullptr,cNetworConsDistProgCov(cPt2di(2,2)),WithDer);
        for (const auto WithSimUk : {true,false})
            GenCodesFormula((tREAL8*)nullptr, cNetWConsDistSetPts(cPt2di(2,2),WithSimUk),WithDer);
+       GenCodesFormula((tREAL8*)nullptr,cNetWConsDistSetPts(3,true),WithDer);
 
-       GenCodesFormula((tREAL8*)nullptr,cDeformImHomotethy(),WithDer);
+       GenCodesFormula((tREAL8*)nullptr,cDeformImHomotethy()       ,WithDer);
    }
 
    GenerateCodeProjCentralPersp<cProjStenope>();

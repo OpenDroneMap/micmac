@@ -1,6 +1,9 @@
 #ifndef  _MMVII_GEOM2D_H_
 #define  _MMVII_GEOM2D_H_
 
+#include "MMVII_Matrix.h"
+#include "MMVII_Triangles.h"
+
 namespace MMVII
 {
 
@@ -34,6 +37,8 @@ template <class T>   T operator ^ (const cPtxd<T,2> & aP1,const cPtxd<T,2> & aP2
 
 template <class T>   cPtxd<T,3> TP3z0  (const cPtxd<T,2> & aPt);
 template <class T>   cPtxd<T,2> Proj   (const cPtxd<T,3> & aPt);
+template <class T>   cTriangle<T,3> TP3z0  (const cTriangle<T,2> & aPt);
+template <class T>   cTriangle<T,2> Proj   (const cTriangle<T,3> & aPt);
 
 
 template <class T>  inline cPtxd<T,2> ToPolar(const cPtxd<T,2> & aP1)  ///<  From x,y to To rho,teta
@@ -273,6 +278,8 @@ template <class Type>  class cRot2D
           static tTypeMap FromMinimalSamples(const tTabMin&,const tTabMin&);
           /// compute by ransac the map minizing Sum |Map(VIn[K])-VOut[K]|
           static tTypeMap RansacL1Estimate(tCRVPts aVIn,tCRVPts aVOut,int aNbTest);
+          /// compute a quick estimate, assuming no outlayers, +or- generalization of FromMinimalSamples
+          static tTypeMap QuickEstimate(tCRVPts aVIn,tCRVPts aVOut);
       private :
           Type          mTeta;
           cSim2D<Type>  mSim;
@@ -298,6 +305,8 @@ template <class Type>  class cAffin2D
           typedef std::vector<Type> tVVals;
           typedef const tVVals *    tCPVVals;
           typedef tPt   tTabMin[NbPtsMin];  // Used for estimate with min number of point=> for ransac
+
+          typedef cTriangle<Type,2>  tTri;
 
           cAffin2D(const tPt & aTr,const tPt & aImX,const tPt aImY) ; 
           cAffin2D();
@@ -330,11 +339,17 @@ template <class Type>  class cAffin2D
           static void ToEqParam(tPt& aRHS,cDenseVect<Type>&,cDenseVect<Type> &,const tPt & aPtIn,const tPt & aPtOut);
           /// compute with minimal number of samples
           static tTypeMap FromMinimalSamples(const tTabMin&,const tTabMin&);
+          /// Affity transforming a triangle in another ~ FromMinimalSamples, just interface
+          static tTypeMap Tri2Tri(const tTri& aTriIn,const tTri& aTriOut);
+
           /// compute by least square the mapping such that Hom(PIn[aK]) = POut[aK]
           static tTypeMap StdGlobEstimate(tCRVPts aVIn,tCRVPts aVOut,Type * aRes2=nullptr,tCPVVals=nullptr);
 
           /// compute by ransac the map minizing Sum |Map(VIn[K])-VOut[K]|
           static tTypeMap RansacL1Estimate(tCRVPts aVIn,tCRVPts aVOut,int aNbTest);
+
+          /// compute the minimal resolution in all possible direction
+          Type  MinResolution() const;
 
       private :
           tPt   mTr;
@@ -349,6 +364,9 @@ cBox2dr  ImageOfBox(const cAff2D_r & aAff,const cBox2dr & aBox);
 
 
 //template <class Type,class TMap>  cTplBox<2,Type>  ImageOfBox();
+
+/// Image of an tri by a mapping
+template <class Type,class tMap>  cTriangle<Type,2>  ImageOfTri(const cTriangle<Type,2> &,const tMap &);
 
 
 
@@ -371,7 +389,11 @@ template <class Type> class  cTriangle2DCompiled : public cTriangle<Type,2>
 
            Type Insideness(const tPt &) const; // <0 out, > inside, 0 : frontier
            bool   Insides(const tPt &,Type aTol=0.0) const; // Tol<0 give more points
-           void PixelsInside(std::vector<cPt2di> & aRes,double aTol=-1e-5) const;
+
+	   /// generate all the pixels inside a triangle, aVWeight to get barrycentric weighting, Tol to have all pixels
+           void PixelsInside(std::vector<cPt2di> & aRes,double aTol=-1e-5,std::vector<t3Val> * aVWeight = nullptr) const;
+
+	   Type Delta() const {return mDelta;}
 
        private :
            void  AssertRegular() const;  //  Non degenerate i.e  delta !=0
@@ -394,6 +416,8 @@ template<class Type> class cTriangulation2D : public cTriangulation<Type,2>
            typedef cPtxd<Type,2>      tPt;
 
            cTriangulation2D(const std::vector<tPt>&);
+	   /// create by flatening to z=0 the points
+           cTriangulation2D(const cTriangulation<Type,3>&);
 	   void  MakeDelaunay();
 	public :
 };

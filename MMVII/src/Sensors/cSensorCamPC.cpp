@@ -1,6 +1,6 @@
-#include "include/MMVII_all.h"
-#include "include/MMVII_2Include_Serial_Tpl.h"
-
+#include "MMVII_2Include_Serial_Tpl.h"
+#include "MMVII_PCSens.h"
+#include "MMVII_Geom2D.h"
 
 
 /**
@@ -37,6 +37,29 @@ cPt2dr cSensorCamPC::Ground2Image(const cPt3dr & aP) const
 {
         //  mPose(0,0,0) = Center, then mPose Cam->Word, then we use Inverse, BTW Inverse is as efficient as direct
      return mInternalCalib->Value(mPose.Inverse(aP));
+}
+
+bool cSensorCamPC::IsVisible(const cPt3dr & aP) const
+{
+     return mInternalCalib->IsVisible(mPose.Inverse(aP));
+}
+
+cPt3dr cSensorCamPC::Ground2ImageAndDepth(const cPt3dr & aP) const
+{
+    cPt3dr aPCam = mPose.Inverse(aP);  // P in camera coordinate
+    cPt2dr aPIm = mInternalCalib->Value(aPCam);
+
+    return cPt3dr(aPIm.x(),aPIm.y(),aPCam.z());
+}
+
+const cPt2di & cSensorCamPC::SzPix() const {return  mInternalCalib->SzPix();}
+
+cPt3dr cSensorCamPC::ImageAndDepth2Ground(const cPt3dr & aP) const
+{
+    cPt3dr aPCam = mInternalCalib->Inverse(Proj(aP));
+
+    return mPose.Value(aPCam * (aP.z() / aPCam.z()));
+
 }
 
 size_t  cSensorCamPC::NumXCenter() const
@@ -150,6 +173,13 @@ cSensorCamPC * cSensorCamPC::FromFile(const std::string & aFile)
 
    return aPC;
 }
+
+std::string  cSensorCamPC::NameOri_From_Image(const std::string & aNameImage)
+{
+   return cSensorImage::NameOri_From_PrefixAndImage(PrefixName(),aNameImage);
+}
+
+
 
 std::string  cSensorCamPC::V_PrefixName() const { return PrefixName() ; }
 std::string  cSensorCamPC::PrefixName()  { return "PerspCentral";}

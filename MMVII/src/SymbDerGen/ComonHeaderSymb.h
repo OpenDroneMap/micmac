@@ -5,8 +5,7 @@
    \brief contain functionnality that are required for code gen and need micma lib
 */
 
-#include "include/MMVII_all.h"
-#include "include/SymbDer/SymbolicDerivatives.h"
+#include "SymbDer/SymbolicDerivatives.h"
 #include <typeinfo>       // operator typeid
 
 using namespace NS_SymbolicDerivative;
@@ -16,14 +15,16 @@ namespace MMVII
 {
 /// required so that we can define points on formula ...
 
-template <> class tElemNumTrait<cFormula <tREAL8> >
+template <> class tNumTrait<cFormula <tREAL8> >
 {
     public :
         // For these type rounding mean something
         // static bool IsInt() {return true;}
         typedef cFormula<tREAL8>  tBase;
         typedef cFormula<tREAL8>  tBig;
+        static void AssertValueOk(const cFormula<double> & ) {}
 };
+
 
 template <class Type> Type SqNormL2V2(const Type & aX,const Type & aY)
 {

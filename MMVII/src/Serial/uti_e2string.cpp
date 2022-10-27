@@ -1,5 +1,10 @@
-#include "include/MMVII_all.h"
+
 #include <map>
+#include "MMVII_util.h"
+#include "MMVII_enums.h"
+#include "MMVII_Stringifier.h"
+#include "cMMVII_Appli.h"
+#include "MMVII_DeclareCste.h"
 
 /** \file uti_e2string.cpp
     \brief Implementation enum <=> string conversion
@@ -166,6 +171,7 @@ template<> cE2Str<eTA2007>::tMapE2Str cE2Str<eTA2007>::mE2S
                 {eTA2007::Orient,"Ori"},
                 {eTA2007::Input,"In"},
                 {eTA2007::Output,"Out"},
+                {eTA2007::OptionalExist,"OptEx"},
                 {eTA2007::AddCom,"AddCom"},
                 {eTA2007::Internal,"##Intern"},
                 {eTA2007::Tuning,"##Tune"},

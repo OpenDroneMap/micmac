@@ -1,6 +1,8 @@
 #ifndef  _MMVII_Images2D_H_
 #define  _MMVII_Images2D_H_
 
+#include "MMVII_Images.h"
+
 namespace MMVII
 {
 /** \file MMVII_Image2D.h
@@ -156,6 +158,20 @@ template <class Type>  class cDataIm2D  : public cDataTypedIm<Type,2>
             tBase aRes = Value(aP) + aValAdd;
             tBI::AssertValueOk(aRes);
             return (Value(aP) = aRes);
+        }
+        /// Modify min 
+        void SetMin(const cPt2di & aP,const Type & aNewVal )  
+        {
+            tPB::AssertInside(aP);
+            tBI::AssertValueOk(aNewVal);
+	    UpdateMin(Value(aP),aNewVal);
+        }
+        /// Modify min 
+        void SetMax(const cPt2di & aP,const Type & aNewVal )  
+        {
+            tPB::AssertInside(aP);
+            tBI::AssertValueOk(aNewVal);
+	    UpdateMax(Value(aP),aNewVal);
         }
 
           // Interface as generic image
@@ -439,6 +455,7 @@ class cRGBImage
         typedef cIm2D<tU_INT1>   tIm1C;  // Type of image for 1 chanel
 
         cRGBImage(const cPt2di & aSz);
+        cRGBImage(const cPt2di & aSz,const cPt3di & aCoul);
 
         /// set values iff param are OK,  RGB image are made for visu, not for intensive computation
         void SetRGBPix(const cPt2di & aPix,int aR,int aG,int aB);

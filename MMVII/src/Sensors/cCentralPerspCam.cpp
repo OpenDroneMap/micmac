@@ -1,5 +1,7 @@
-#include "include/MMVII_all.h"
-#include "include/MMVII_2Include_Serial_Tpl.h"
+#include "SymbDer/SymbDer_Common.h"
+#include "MMVII_PCSens.h"
+#include "MMVII_2Include_Serial_Tpl.h"
+#include "MMVII_Geom2D.h"
 #include <set>
 
 #ifdef _OPENMP
@@ -315,15 +317,50 @@ const  std::vector<cPt2dr> &  cPerspCamIntrCalib::Values(tVecOut & aV3 ,const tV
      return aV3;
 }
 
+bool cPerspCamIntrCalib::IsVisible(const cPt3dr & aP) const
+{
+     if (mInvApproxLSQ_Dist==nullptr)
+     {
+         const_cast<cPerspCamIntrCalib*>(this)->UpdateLSQDistInv();
+     }
+     cPt2dr aPphgr = mDir_Proj->Value(aP);
+     cPt2dr aPDist  = mDir_Dist->Value(aPphgr);
+
+     {
+        cPt2dr aPIm   = mCSPerfect.Value(aPDist);
+        if (! mPixDomain.InsideWithBox(aPIm))
+           return false;
+     }
+
+     cPt2dr aPPhgrBack = mDist_DirInvertible->Inverse(aPDist);
+
+     double anEc = Norm2(aPphgr-aPPhgrBack);
+     return (anEc * F())  < 1e-2;
+}
+
 
 const  std::vector<cPt3dr> &  cPerspCamIntrCalib::Inverses(tVecIn & aV3 ,const tVecOut & aV0 ) const 
 {
+     if (mInvApproxLSQ_Dist==nullptr)
+     {
+         const_cast<cPerspCamIntrCalib*>(this)->UpdateLSQDistInv();
+     }
      static tVecOut aV1,aV2;
      mInv_CSP.Values(aV1,aV0);
      mDist_DirInvertible->Inverses(aV2,aV1);
      mInv_Proj->Values(aV3,aV2);
      
      return aV3;
+}
+
+cPt3dr  cPerspCamIntrCalib::Inverse(const tPtOut & aPt) const 
+{
+     std::vector<tPtIn>  aVecIn;
+     std::vector<tPtOut> aVecOut{aPt};
+     const  std::vector<tPtIn> & aVRes = Inverses(aVecIn,aVecOut);
+
+     cPt3dr aRes =  aVRes.at(0);
+     return aRes;
 }
 
 tREAL8  cPerspCamIntrCalib::InvProjIsDef(const tPtOut & aPix ) const
@@ -333,10 +370,16 @@ tREAL8  cPerspCamIntrCalib::InvProjIsDef(const tPtOut & aPix ) const
 
       //   ----  object in unknown system (bundle adj ...) ----------------
      
+void cPerspCamIntrCalib::UpdateCSP() 
+{
+    mInv_CSP       = mCSPerfect.MapInverse();
+}
 void cPerspCamIntrCalib::OnUpdate() 
 {
+   // The inverst for dist and csp must be recomputed
+    mInv_CSP       = mCSPerfect.MapInverse();
     if (mInvApproxLSQ_Dist!=nullptr)
-      UpdateLSQDistInv();
+       UpdateLSQDistInv();
 }
 
 void cPerspCamIntrCalib::PutUknowsInSetInterval() 
@@ -365,11 +408,15 @@ void cPerspCamIntrCalib::SetThresholdPixAccInv(double aThr)
 }
 
 const std::string & cPerspCamIntrCalib::Name()   const {return mName ;}
-const double & cPerspCamIntrCalib::F()      const {return mCSPerfect.F() ;}
-const cPt2dr & cPerspCamIntrCalib::PP()     const {return mCSPerfect.PP();}
 const cPt3di & cPerspCamIntrCalib::DegDir() const {return mDir_Degr;}
 const std::vector<double> & cPerspCamIntrCalib::VParamDist() const { return mDir_Dist->VObs(); }
 std::vector<double> & cPerspCamIntrCalib::VParamDist() { return mDir_Dist->VObs(); }
+
+const double & cPerspCamIntrCalib::F()      const {return mCSPerfect.F() ;}
+const cPt2dr & cPerspCamIntrCalib::PP()     const {return mCSPerfect.PP();}
+
+const cPt2di & cPerspCamIntrCalib::SzPix() const {return mPixDomain.Sz();}
+
 
 
        /* ================================================================== */

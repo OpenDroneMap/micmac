@@ -1,6 +1,6 @@
-#include "include/MMVII_all.h"
-
-// #include <Eigen/Dense>
+#include "MMVII_Images.h"
+#include "MMVII_Geom2D.h"
+#include "MMVII_MMV1Compat.h"
 
 namespace MMVII
 {
@@ -36,6 +36,15 @@ template <class Type,const int Dim> cSegmentCompiled<Type,Dim>::cSegmentCompiled
 {
 }
 
+template <class Type,const int Dim> cPtxd<Type,Dim>  cSegmentCompiled<Type,Dim>::Proj(const tPt & aPt) const
+{
+     return this->mP1 + mTgt * Type(Scal(mTgt,aPt-this->mP1)) ;
+}
+
+template <class Type,const int Dim> Type  cSegmentCompiled<Type,Dim>::Dist(const tPt & aPt) const
+{
+	return Norm2(aPt-Proj(aPt));
+}
 /* ========================== */
 /*          ::                */
 /* ========================== */
@@ -147,6 +156,7 @@ template <class T>   cPtxd<T,2> Proj  (const cPtxd<T,3> & aPt)
     return cPtxd<T,2>(aPt.x(),aPt.y());
 }
 
+
 template <class Type,const int Dim> cPtxd<Type,Dim> cPtxd<Type,Dim>::FromStdVector(const std::vector<Type>& aV)
 {
    cPtxd<Type,Dim> aRes;
@@ -203,12 +213,14 @@ template <class Type,const int Dim> cPtxd<Type,Dim>  cPtxd<Type,Dim>::FromPtInt(
    return aRes;
 }
 
-/*
-void ff()
+template <class Type,const int Dim> cPtxd<Type,Dim>  cPtxd<Type,Dim>::FromPtR(const cPtxd<tREAL8,Dim> & aPtR)
 {
-    cPtxd<double,3>::FromPtInt(cPt3di(0,0,0));
+   cPtxd<Type,Dim> aRes;
+   for (int aK=0 ; aK<Dim; aK++)
+       aRes.mCoords[aK]= aPtR[aK];
+   return aRes;
 }
-*/
+
 
 
 template <class Type,const int Dim> cPtxd<Type,Dim>  cPtxd<Type,Dim>::PRand()
@@ -327,6 +339,19 @@ template <class T,const int Dim>
       aRes +=  aP1[aD]*aP2[aD];
    return aRes;
 }
+
+template <class T,const int Dim>  
+   typename  tNumTrait<T>::tBig MulCoord(const cPtxd<T,Dim> &aPt)
+{
+   typename tNumTrait<T>::tBig  aRes = aPt[0];
+   for (int aD=1 ; aD<Dim; aD++)
+      aRes *=  aPt[aD];
+   return aRes;
+}
+
+
+
+
 
 template <class T,const int Dim>  T Cos(const cPtxd<T,Dim> &aP1,const cPtxd<T,Dim> & aP2)
 {
@@ -675,6 +700,18 @@ template <class Type,const int Dim>
 {
 }
 
+template <class Type,const int Dim>
+   cTplBox<Type,Dim>  cTplBox<Type,Dim>::BoxCste(Type aVal)
+{
+   return cTplBox<Type,Dim>(tPt::PCste(-aVal),tPt::PCste(aVal));
+}
+
+template <class Type,const int Dim>
+   cTplBox<Type,Dim>  cTplBox<Type,Dim>::BigBox()
+{
+     return  BoxCste(tNumTrait<Type>::MaxValue());
+}
+
 
 template <class Type,const int Dim> bool  cTplBox<Type,Dim>::IsEmpty() const
 {
@@ -918,6 +955,8 @@ template <class Type,const int Dim>   cTplBoxOfPts<Type,Dim>::cTplBoxOfPts() :
 {
 }
 
+
+
 template <class Type,const int Dim> 
    cTplBoxOfPts<Type,Dim>  cTplBoxOfPts<Type,Dim>::FromVect(const tPt * aBegin,const tPt * aEnd)
 {
@@ -1088,10 +1127,12 @@ template  TYPE Norm1(const cPtxd<TYPE,DIM> & aPt);\
 template  TYPE NormInf(const cPtxd<TYPE,DIM> & aPt);\
 template  TYPE MinAbsCoord(const cPtxd<TYPE,DIM> & aPt);\
 template  typename  tNumTrait<TYPE>::tBig Scal(const cPtxd<TYPE,DIM> &,const cPtxd<TYPE,DIM> &);\
+template  typename  tNumTrait<TYPE>::tBig MulCoord(const cPtxd<TYPE,DIM> &);\
 template  TYPE Cos(const cPtxd<TYPE,DIM> &,const cPtxd<TYPE,DIM> &);\
 template  TYPE AbsAngle(const cPtxd<TYPE,DIM> &,const cPtxd<TYPE,DIM> &);\
 template  cPtxd<TYPE,DIM>  VUnit(const cPtxd<TYPE,DIM> & aP);\
-template  cPtxd<TYPE,DIM>  cPtxd<TYPE,DIM>::FromPtInt(const cPtxd<int,DIM> & aPInt);
+template  cPtxd<TYPE,DIM>  cPtxd<TYPE,DIM>::FromPtInt(const cPtxd<int,DIM> & aPInt);\
+template  cPtxd<TYPE,DIM>  cPtxd<TYPE,DIM>::FromPtR(const cPtxd<tREAL8,DIM> & aPInt);
 
 // template  cPtxd<TYPE,DIM>  PCste(const DIM & aVal);
 

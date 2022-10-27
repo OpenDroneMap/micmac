@@ -1,6 +1,7 @@
-#include "include/MMVII_all.h"
-#include "include/MMVII_Tpl_Images.h"
 
+#include "MMVII_Tpl_Images.h"
+
+#include "MMVII_SysSurR.h"
 
 using namespace NS_SymbolicDerivative;
 using namespace MMVII;
@@ -250,6 +251,11 @@ template <class Type> void cResolSysNonLinear<Type>::SetFrozenVar(int aK,const  
     AssertNotInEquation();
     mVarIsFrozen.at(aK) = true;
     mValueFrozenVar.at(aK) = aVal;
+}
+
+template <class Type> void cResolSysNonLinear<Type>::SetFrozenVarCurVal(int aK)
+{
+	SetFrozenVar(aK,CurSol(aK));
 }
 
 template <class Type> void cResolSysNonLinear<Type>::SetFrozenVar(tObjWUk & anObj,const  Type & aVal)

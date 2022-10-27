@@ -1,4 +1,5 @@
-#include "include/MMVII_all.h"
+
+#include "MMVII_Image2D.h"
 
 namespace MMVII
 {
@@ -25,6 +26,14 @@ cRGBImage::cRGBImage(const cPt2di & aSz) :
     mImB (aSz)
 {
 }
+cRGBImage::cRGBImage(const cPt2di & aSz,const cPt3di & aCoul) :
+   cRGBImage (aSz)
+{
+    for (const auto & aPix : mImR.DIm())
+        SetRGBPix(aPix,aCoul);
+}
+
+
 void cRGBImage::SetRGBPix(const cPt2di & aPix,int aR,int aG,int aB)
 {
     mImR.DIm().SetVTruncIfInside(aPix,aR);

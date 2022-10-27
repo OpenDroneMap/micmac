@@ -1,5 +1,6 @@
-#include "include/MMVII_all.h"
-
+#include "MMVII_PCSens.h"
+#include "MMVII_MMV1Compat.h"
+#include "MMVII_DeclareCste.h"
 
 /**
    \file cConvCalib.cpp
@@ -276,6 +277,17 @@ void BenchPoseImportV1(const std::string & aNameOriV1,double anAccuracy)
      cSensorCamPC  *aPC  =  cCentralPerspConversion::AllocSensorPCV1(V1NameOri2NameImage(aNameOriV1),aFullName);
      double aResidual  =  aPC->AvgResidual(aExp.mCorresp);
 
+
+     for (const auto & aCorresp : aExp.mCorresp.Pairs())
+     {
+         cPt3dr aPGround = aCorresp.mP3;
+	 cPt3dr aPImAndD = aPC->Ground2ImageAndDepth(aPGround);
+	 cPt3dr aPG2 = aPC->ImageAndDepth2Ground(aPImAndD);
+
+	 double aDist = Norm2(aPGround - aPG2);
+          MMVII_INTERNAL_ASSERT_bench(aDist<1e-5 ,"I&Depth inversion");
+     }
+
      MMVII_INTERNAL_ASSERT_bench(aResidual<anAccuracy ,"No convergence in BenchCentralePerspective_ImportV1");
 
      std::string aNameTmp = cMMVII_Appli::CurrentAppli().TmpDirTestMMVII() +  aPC->NameOriStd();  // "ccTestOri.xml";
@@ -306,45 +318,21 @@ void BenchCentralePerspective_ImportV1(cParamExeBench & aParam)
 
         BenchCentralePerspective_ImportCalibV1(aParam,"AutoCal_Foc-11500_Cam-imx477imx477-1.xml",false,false,1e-3);
     }
-
-    StdOut() << "JJJJJJJJJlllllllllll\n"; getchar();
 }
 
     // ===============================================================================================
     // ===============================================================================================
     // ===============================================================================================
 
-class cPhotogrammetricProject
-{
-      public :
-          
-       //  method to share the parameters loadings from arc/argv
-          tPtrArg2007  OriInMand() ;
-          tPtrArg2007  OriOutMand();
-          tPtrArg2007  OriInOpt() ;// {return  AOpt2007(mOriIn ,"InOri","Input Orientation",{eTA2007::Orient,eTA2007::Input });}
-				   //
-          cPhotogrammetricProject(cMMVII_Appli &);
-
-	  /// some initialisation can be done only once Appli is itself init
-	  void FinishInit() ;  
-	  void SaveCamPC(const cSensorCamPC &) const;
-
-      private :
-          cPhotogrammetricProject(const cPhotogrammetricProject &) = delete;
-          cMMVII_Appli &  mAppli;
-          std::string     mFolderProject;
-
-          std::string     mOriIn;
-          std::string     mOriOut;
-
-          std::string     mFullOriOut;
-          std::string     mFullOriIn;
-
-};
 
 cPhotogrammetricProject::cPhotogrammetricProject(cMMVII_Appli & anAppli) :
     mAppli  (anAppli)
 {
+}
+
+cPhotogrammetricProject::~cPhotogrammetricProject() 
+{
+    DeleteAllAndClear(mLCam2Del);
 }
 
 tPtrArg2007 cPhotogrammetricProject::OriInMand() {return  Arg2007(mOriIn ,"Input Orientation",{eTA2007::Orient,eTA2007::Input });}
@@ -366,6 +354,19 @@ void cPhotogrammetricProject::SaveCamPC(const cSensorCamPC & aCamPC) const
 {
     aCamPC.ToFile(mFullOriOut + aCamPC.NameOriStd());
 }
+
+cSensorCamPC * cPhotogrammetricProject::AllocCamPC(const std::string & aNameIm,bool ToDelete)
+{
+    std::string aNameCam  = mFullOriIn + cSensorCamPC::NameOri_From_Image(aNameIm);
+    cSensorCamPC * aCamPC =  cSensorCamPC::FromFile(aNameCam);
+
+    if (ToDelete)
+       mLCam2Del.push_back(aCamPC);
+
+    return aCamPC;
+}
+/*
+*/
 
    /* ********************************************************** */
    /*                                                            */
