@@ -439,6 +439,7 @@ int  cAppli_MMVII_Bench::ExecuteBench(cParamExeBench & aParam)
         this->BenchFiles(aParam); // Creation deletion of file
         Bench_Nums(aParam); // Basic numericall services
         BenchHamming(aParam);
+        BenchPolynome(aParam);
         BenchRansSubset(aParam);
         BenchRecall(aParam,mNumBugRecall); // Force MMVII to generate call to itself
         BenchSet(aParam,mDirTestMMVII);  // Set (in extension)
@@ -527,7 +528,7 @@ int  cAppli_MMVII_Bench::ExecuteBench(cParamExeBench & aParam)
        if (aSpec->Name() != mSpecs.Name())
        {
           // Not really necessary to init, but no bad ...
-          std::vector<std::string> aVArgs = {Bin2007," "+ aSpec->Name()};
+          std::vector<std::string> aVArgs = {mFullBin," "+ aSpec->Name()};
           tMMVII_UnikPApli anAppli = aSpec->Alloc()(aVArgs,*aSpec);
           anAppli->SetNot4Exe();
 
@@ -920,12 +921,14 @@ void ShowAdr(double & anAdr)
        StdOut () <<  "ADDDDDr " << &(anAdr) << "\n";
 }
 void TTT();
-
+void TestResec();
 
 
 // #include <limits>
 int cAppli_MPDTest::Exe()
 {
+   TestResec();
+
    int aVatNotInSpec;
    StdOut() <<  "mDegDistTest " << IsInSpec(&mDegDistTest) << " " << IsInSpec(&aVatNotInSpec) << "\n";
    if (IsInit(&mDegDistTest))

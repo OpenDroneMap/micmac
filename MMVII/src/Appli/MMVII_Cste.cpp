@@ -1,4 +1,5 @@
 #include "MMVII_util.h"
+#include "MMVII_Sys.h"
 #include "MMVII_Stringifier.h"
 #include "MMVII_DeclareCste.h"
 
@@ -72,7 +73,9 @@ const std::string GIP_BenchMode = "BenchMode";
 const char CharProctected = '\\';
 #endif
 
-const std::string  Bin2007 = "MMVII";
+const std::string FullBin2007=MMVII_CanonicalSelfExecName();
+const std::string DirBin2007=DirOfPath(FullBin2007);        // order initialization is garanteed in same TU
+
 
 // User/Command
 const   std::string MMVII_NONE = "NONE";
