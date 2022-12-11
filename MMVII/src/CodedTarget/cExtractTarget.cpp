@@ -8,6 +8,11 @@
 #include <typeinfo>
 
 
+/*   Modularistion
+ *   Code extern tel que ellipse 
+ *   Ellipse => avec centre
+ *   Pas de continue 
+ */
 #define PI 3.14159265
 
 // Test git branch
@@ -281,7 +286,7 @@ void cAppliExtractCodeTarget::SelectOnFilter(cFilterDCT<tREAL4> * aFilter,bool M
 void cAppliExtractCodeTarget::MatchOnGT(cGeomSimDCT & aGSD)
 {
      // strtucture for extracting min
-     cWhitchMin<cDCT*,double>  aWMin(nullptr,1e10);
+     cWhichMin<cDCT*,double>  aWMin(nullptr,1e10);
 
      for (auto aPtrDCT : mVDCT)
          aWMin.Add(aPtrDCT,SqN2(aPtrDCT->mPt-aGSD.mC));
@@ -449,10 +454,10 @@ void  cAppliExtractCodeTarget::DoExtract(){
          {
              eResDCT aState = eResDCT::Ok;
 	     cPt2dr aPtR = ToR(aPix);
-             if  (APBI_DIm().Interiority(aPix)<20) 
+             if  (APBI_DIm().Interiority(aPix)<20)  // remove point closde to border of image
                 aState = eResDCT::Divg;
-
-              mVDCT.push_back(new cDCT(aPtR,aState));
+	     else
+                mVDCT.push_back(new cDCT(aPtR,aState));
          }
          DoAllMatchOnGT();  // Match on GT 
          ShowStats("SadleDiffRel ");

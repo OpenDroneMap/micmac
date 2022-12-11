@@ -184,8 +184,8 @@ cCollecSpecArg2007 & cAppliRadiom2ImageSameMod::ArgObl(cCollecSpecArg2007 & anAr
 {
    return anArgObl
           <<   Arg2007(mNamePatternIm,"Name of image", {{eTA2007::MPatFile,"0"},eTA2007::FileDirProj} )
-          <<   mPhProj.RadiomInMand()
-          <<   mPhProj.CalibInMand()
+          <<   mPhProj.DPRadiom().ArgDirInMand()
+          <<   mPhProj.DPOrient().ArgDirInMand("InputCalibration")
 
    ;
 }
@@ -194,7 +194,7 @@ cCollecSpecArg2007 & cAppliRadiom2ImageSameMod::ArgOpt(cCollecSpecArg2007 & anAr
 {
    return anArgOpt
            << AOpt2007(mShow,"Show","Show messages",{eTA2007::HDV})
-	   << mPhProj.RadiomOptOut()
+	   << mPhProj.DPRadiom().ArgDirOutOpt()
 	   /*
            << AOpt2007(mResolZBuf,"ResZBuf","Resolution of ZBuffer", {eTA2007::HDV})
 	   */
@@ -548,7 +548,7 @@ tMMVII_UnikPApli Alloc_Radiom2ImageSameMod(const std::vector<std::string> &  aVA
 
 cSpecMMVII_Appli  TheSpecRadiom2ImageSameMod
 (
-     "RadiomTest",
+     "RadiomComputeEqual",
       Alloc_Radiom2ImageSameMod,
       "Estimate radiometric model (test 4 now)",
       {eApF::Radiometry},
