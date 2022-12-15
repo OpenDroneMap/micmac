@@ -328,6 +328,7 @@ std::string cOneLevel::StrComReduce(bool ModeIm) const
            + BLANK + ToStr(mIm.mAppli.mRatioByL)
            + BLANK + std::string("Out=")  + mDownLev->NameImOrMasq(ModeIm)
            + std::string(ModeIm ? "" : " ModMasq=1")
+	   + BLANK + "@ExitOnBrkp"
    ;
 }
 
@@ -377,6 +378,7 @@ std::string  cOneLevel::StrComClipIm(bool ModeIm,const cPt2di & aInd,const cPara
           + BLANK +  ToStrComMMV1(aBox.P0())
           + BLANK +  ToStrComMMV1(aBox.Sz())
           + BLANK +  "Out=" + (ModeIm ? NameClipIm(aInd) : NameClipMasq(aInd))
+          + BLANK + "@ExitOnBrkp"
    ;
 
    if (IsIm1)
@@ -606,8 +608,8 @@ cAppli::cAppli
    cMMVII_Appli(aVArgs,aSpec),
    mSzBasculeMM  (0.5),  // correspond to 2000x2000 pixel
    mRandPaded    (false),
-   mSzTile     (2000,1500),
-   mSzOverL    (50,30),
+   mSzTile     (900,900),
+   mSzOverL    (100,100),
    mIncPxProp  (0.05),
    mIncPxCste  (50),  // (PxMax-PxMin)/2
    mIncPxMin   (100),
@@ -734,7 +736,8 @@ void cAppli::MakePyramid()
    else
    {
        for (int aK=0 ; aK<10 ; aK++)
-           StdOut() << "!!!!! Pyramid skeeped !!!!\n";
+           StdOut() << "!!!!! Pyramid skipped !!!!\n";
+       StdOut() << "--> type any key to continue the process\n";
        getchar();
    }
 
@@ -931,7 +934,7 @@ int  cAppli::ExecuteBench(cParamExeBench & aParam)
 
 
    std::string aDirData = InputDirTestMMVII() + "EPIP/Tiny/";
-   std::string aCom =    mFullBin
+   std::string aCom =    FullBin()
                        + BLANK  + mSpecs.Name()
                        + " MMV1 ImR.tif ImL.tif   Out=PxRL.tif SzTile=[300,200]"
                        + BLANK + GOP_DirProj + "=" + aDirData;
