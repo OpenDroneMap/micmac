@@ -10,6 +10,7 @@ using namespace NS_SymbolicDerivative;
 
 namespace MMVII
 {
+
 /** \file MMVII_PCSens.h
     \brief Interface class for central perspective sensors
  *  
@@ -260,6 +261,9 @@ class cPerspCamIntrCalib : public cObj2DelAtEnd,
 	     ///  big object, no valuable copy
             cPerspCamIntrCalib(const cPerspCamIntrCalib &) = delete;
 
+	    /// For inversion, or sampling point, we need seed that is +- corresponding of sensor midle, befor dist
+	    cPt2dr PtSeedInv() const;
+
 
          // ==================   DATA PART   ===================
 	 //
@@ -314,6 +318,10 @@ class cSensorCamPC : public cSensorImage
          typedef cIsometry3D<tREAL8>  tPose;   /// transformation Cam to Word
 
          cSensorCamPC(const std::string & aNameImage,const tPose & aPose,cPerspCamIntrCalib * aCalib);
+
+         /// Create form  Un-Calibrated-Space-Resection
+         static cSensorCamPC * CreateUCSR(const cSet2D3D&,const cPt2di & aSzCam,bool Real16=true);
+
          cPt2dr Ground2Image(const cPt3dr &) const override;
 
 	 double Visibility(const cPt3dr &) const override;
