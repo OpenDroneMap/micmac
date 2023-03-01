@@ -6,7 +6,6 @@
 namespace MMVII
 {
 
-static constexpr int SzGaussDeZoom =  3;  // De Zoom to have a gray value target
 
 namespace  cNS_CodedTarget
 {
@@ -85,7 +84,6 @@ template <class eType> void EnumAddData(const cAuxAr2007 & anAux,const std::stri
 
 void cParamCodedTarget::AddData(const cAuxAr2007 & anAux)
 {
-    //MMVII::AddData(cAuxAr2007("Type",anAux),mType);
     MMVII::EnumAddData(anAux,mType,"Type");
     MMVII::AddData(cAuxAr2007("NbBits",anAux),mNbBit);
     MMVII::AddData(cAuxAr2007("SzF",anAux),mSzF);
@@ -137,7 +135,8 @@ cParamCodedTarget::cParamCodedTarget() :
    mWithParity       (true),
    mNbRedond         (2),
    mNbCircle         (1),
-   mNbPixelBin       (round_to(1800,2*SzGaussDeZoom)), // make size a multiple of 2 * zoom, to have final center at 1/2 pix
+   mSzGaussDeZoom    (3),
+   mNbPixelBin       (round_to(1800,2*mSzGaussDeZoom)), // make size a multiple of 2 * zoom, to have final center at 1/2 pix
    mSz_CCB           (1),
    mThickN_WInt      (0.35),
    mThickN_Code      (0.35),
@@ -236,7 +235,7 @@ void cParamCodedTarget::Finish()
 
 
   // mMidle = ToR(mSzBin-cPt2di(1,1)) / 2.0 - cPt2dr(1,1) ; //  pixel center model,suppose sz=2,  pixel 0 and 1 => center is 0.5
-  mMidle = ToR(mSzBin-cPt2di(SzGaussDeZoom,SzGaussDeZoom)) / 2.0  ; //  pixel center model,suppose sz=2,  pixel 0 and 1 => center is 0.5
+  mMidle = ToR(mSzBin-cPt2di(mSzGaussDeZoom,mSzGaussDeZoom)) / 2.0  ; //  pixel center model,suppose sz=2,  pixel 0 and 1 => center is 0.5
   mScale = mNbPixelBin / (2.0 * mRho_4_EndCar);
 
   std::vector<int> aVNbSub;
@@ -514,7 +513,7 @@ tImTarget  cParamCodedTarget::MakeImCircle(const cCodesOf1Target & aSetCodesOfT,
 
      // MMVII_INTERNAL_ASSERT_User(aN<256,"For
 
-     aImT = aImT.GaussDeZoom(SzGaussDeZoom);
+     aImT = aImT.GaussDeZoom(mSzGaussDeZoom);
      return aImT;
 }
 
@@ -529,6 +528,7 @@ class cAppliGenCodedTarget : public cMMVII_Appli
 {
      public :
         cAppliGenCodedTarget(const std::vector<std::string> & aVArgs,const cSpecMMVII_Appli & aSpec);
+	eTyCodeTarget      Type();
 
      private :
 
@@ -539,9 +539,13 @@ class cAppliGenCodedTarget : public cMMVII_Appli
 
 
 	int                mPerGen;  // Pattern of numbers
+	std::string        mNameBE;
+	cBitEncoding       mBE;
+
 	cParamCodedTarget  mPCT;
-	eTyCodeTarget      mType;
 };
+
+eTyCodeTarget cAppliGenCodedTarget::Type() {return mBE.Specs().mType ;}
 
 
 /* *************************************************** */
@@ -550,10 +554,97 @@ class cAppliGenCodedTarget : public cMMVII_Appli
 /*                                                     */
 /* *************************************************** */
 
+typedef cParamCodedTarget cParamGeomTarget;
+
+class cFullSpecifTarget
+{
+      public :
+         cFullSpecifTarget(const cBitEncoding&,const cParamGeomTarget&);
+         const cBitEncoding     & mBE;
+         const cParamGeomTarget & mGeom;
+};
+
+class cNormPix2Bit
+{
+    public :
+
+	 virtual cPt2dr  Transfo(const cPt2dr & aPt) const = 0;
+	 virtual bool PNormIsCodin(const cPt2dr & aPt) const = 0;
+	 virtual int  BitsOfNorm    (const cPt2dr & aPt) const = 0;
+    protected :
+};
+
+
+	/*
+class cCircNP2B :  cNormPix2Bit
+{
+     public :
+         cCircNP2B(const cFullSpecifTarget & aSpecif);
+
+	 cPt2dr  Transfo(const cPt2dr & aPt)        const   override;
+	 bool    PNormIsCodin(const cPt2dr & aPt)   const   override;
+	 int     BitsOfNorm    (const cPt2dr & aPt) const   override;
+     private :
+	 tREAL8 mRho0;
+	 tREAL8 mRho1;
+	 tREAL8 mTeta0;
+	 int    mNbBits;
+};
+
+cCircNP2B::cCircNP2B(const cFullSpecifTarget & aSpecif) :
+   mRho0  (aSpecif.mGeom.mRho_1_BeginCode),
+   mRho1  (aSpecif.mGeom.mRho_2_EndCode)
+{
+}
+
+cPt2dr  cCircNP2B::Transfo(const cPt2dr & aPt)   const 
+{
+    return ToPolar(aPt);
+}
+bool  cCircNP2B::PNormIsCodin(const cPt2dr & aPt) const 
+{
+    tREAL8 aRho = aPt.x();
+    return   (aRho>=mRho0)  && (aRho<mRho1) ;
+}
+
+int cCircNP2B::BitsOfNorm(const cPt2dr & aPt) const 
+{
+     tREAL8mSpecif.mGeom.mRho_1_BeginCode aTeta = aPt.y() -mChessboardAng;
+     tREAL8 aIndex = (aTeta / (2*M_PI)) 
+     aIndex = mod_real
+     aTeta = (aTeta -mChessboardAng) / (2*M_PI)
+     return round_ni 
+}
+*/	
+
+class cCodedTargetPatternIm
+{
+     public :
+          typedef tU_INT1            tElem;
+          typedef cIm2D<tElem>       tIm;
+          typedef cDataIm2D<tElem>   tDataIm;
+
+          cCodedTargetPatternIm(const cBitEncoding & aBE,const cParamGeomTarget &);
+     private :
+	  cBitEncoding      mBE;
+          cParamGeomTarget  mPGeom;
+	  tIm               mIm;
+};
+
+
+cCodedTargetPatternIm::cCodedTargetPatternIm(const cBitEncoding & aBE,const cParamGeomTarget & aParamGeom) :
+     mBE     (aBE),
+     mPGeom  (aParamGeom),
+     mIm     (mPGeom.mSzBin)
+{
+}
+
+
+
 
 cAppliGenCodedTarget::cAppliGenCodedTarget(const std::vector<std::string> & aVArgs,const cSpecMMVII_Appli & aSpec) :
    cMMVII_Appli  (aVArgs,aSpec),
-   mType         (eTyCodeTarget::eIGNIndoor)
+   mPerGen       (10)
 {
 }
 
@@ -561,15 +652,13 @@ cCollecSpecArg2007 & cAppliGenCodedTarget::ArgObl(cCollecSpecArg2007 & anArgObl)
 {
  return
       anArgObl
-          <<   Arg2007(mPerGen,"Periode of generated, give 1 to generate all")
+          <<   Arg2007(mNameBE,"XML name for bit encoding struct")
    ;
 }
 
 cCollecSpecArg2007 & cAppliGenCodedTarget::ArgOpt(cCollecSpecArg2007 & anArgOpt)
 {
    return anArgOpt
-          << AOpt2007(mType,"Type","Type of enumerated ",{eTA2007::HDV,AC_ListVal<eTyCodeTarget>()})
-
           << AOpt2007(mPCT.mNbBit,"NbBit","Nb Bit printed",{eTA2007::HDV})
           << AOpt2007(mPCT.mWithParity,"WPar","With parity bit",{eTA2007::HDV})
           << AOpt2007(mPCT.mThickN_WInt,"ThW0","Thickness of interior white circle",{eTA2007::HDV})
@@ -591,11 +680,13 @@ cCollecSpecArg2007 & cAppliGenCodedTarget::ArgOpt(cCollecSpecArg2007 & anArgOpt)
 
 int  cAppliGenCodedTarget::Exe()
 {
+   ReadFromFile(mBE,mNameBE);
 
-   mPCT.FinishInitOfType(mType);
+   mPCT.FinishInitOfType(Type());
    mPCT.Finish();
 
-   for (int aNum=0 ; aNum<mPCT.NbCodeAvalaible() ; aNum+=mPerGen){
+   for (int aNum=0 ; aNum<mPCT.NbCodeAvalaible() ; aNum+=mPerGen)
+   {
 
       cCodesOf1Target aCodes = mPCT.CodesOfNum(aNum);
 
@@ -606,11 +697,11 @@ int  cAppliGenCodedTarget::Exe()
       // std::string aName = "Target_" + mPCT.NameOfNum(aNum) + ".tif";
       // FakeUseIt(aCodes);
       mPCT.mSzF = aImT.DIm().Sz();
-      mPCT.mCenterF = mPCT.mMidle / double(SzGaussDeZoom);
+      mPCT.mCenterF = mPCT.mMidle / double(mPCT.mSzGaussDeZoom);
 
       //StdOut() << "mPCT.mCenterF  " << mPCT.mCenterF  << mPCT.mMidle << "\n";
 
-      double aRhoChB = ((mPCT.mRho_0_EndCCB/mPCT.mRho_4_EndCar) * (mPCT.mNbPixelBin /2.0)  )/SzGaussDeZoom;
+      double aRhoChB = ((mPCT.mRho_0_EndCCB/mPCT.mRho_4_EndCar) * (mPCT.mNbPixelBin /2.0)  )/mPCT.mSzGaussDeZoom;
       mPCT.mCornEl1 = mPCT.mCenterF+FromPolar(aRhoChB,M_PI/4.0);
       mPCT.mCornEl2 = mPCT.mCenterF+FromPolar(aRhoChB,3.0*(M_PI/4.0));
        

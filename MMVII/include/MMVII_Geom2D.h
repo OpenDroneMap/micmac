@@ -3,6 +3,7 @@
 
 #include "MMVII_Matrix.h"
 #include "MMVII_Triangles.h"
+#include "MMVII_ImageInfoExtract.h"
 
 
 namespace MMVII
@@ -446,7 +447,7 @@ class cEllipse
        const cPt2dr &  Center() const; ///< Accessor
        double TetaGa() const; /// Teta great axe
 
-       cPt2dr  PtOfTeta(tREAL8 aTeta) const; /// return on ellipse with param A cos(T) + B sin(T)
+       cPt2dr  PtOfTeta(tREAL8 aTeta,tREAL8 aMulRho=1.0) const; /// return on ellipse with param A cos(T) + B sin(T)
        cPt2dr  PtAndGradOfTeta(tREAL8 aTeta,cPt2dr &) const;  /// return also the gradien of belong function
 
     private :
@@ -481,6 +482,8 @@ class cEllipse_Estimate
       private :
          cLeasSqtAA<tREAL8> *mSys;
          cPt2dr             mC0;
+
+	 std::vector<cPt2dr>  mVObs;
 };
 
 
@@ -497,9 +500,36 @@ tResFlux  GetPts_Circle(const cPt2dr & aC,double aRay,bool with8Neigh);
 void  GetPts_Ellipse(tResFlux & aRes,const cPt2dr & aC,double aRayA,double aRayB, double aTeta,bool with8Neigh);
 
 
+struct cExtractedEllipse
+{
+     public :
+        cSeedBWTarget    mSeed;
+        cEllipse         mEllipse;
 
+        cExtractedEllipse(const cSeedBWTarget& aSeed,const cEllipse & anEllipse);
 
+        tREAL8               mDist;
+        tREAL8               mDistPond;
+        tREAL8               mEcartAng;
+        bool                 mValidated;
+        std::vector<cPt2dr>  mVFront;
+};
 
+class cExtract_BW_Ellipse  : public cExtract_BW_Target
+{
+        public :
+             cExtract_BW_Ellipse(tIm anIm,const cParamBWTarget & aPBWT,cIm2D<tU_INT1> aMasqTest);
+
+             void AnalyseAllConnectedComponents(const std::string & aNameIm);
+             bool AnalyseEllipse(cSeedBWTarget & aSeed,const std::string & aNameIm);
+
+             const std::list<cExtractedEllipse> & ListExtEl() const;  ///< Accessor
+        private :
+
+             std::list<cExtractedEllipse> mListExtEl;
+};
+
+void  ShowEllipse(const cExtractedEllipse & anEE,const std::string & aNameIm);
 
 
 };

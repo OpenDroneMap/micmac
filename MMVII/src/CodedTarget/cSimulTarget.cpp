@@ -29,8 +29,8 @@ cGeomSimDCT::cGeomSimDCT() :
 
 void cGeomSimDCT::Translate(const cPt2dr & aTr)
 {
-    mC += aTr;       
-    mCornEl1 += aTr; 
+    mC += aTr;
+    mCornEl1 += aTr;
     mCornEl2 += aTr;
 }
 
@@ -202,6 +202,7 @@ void   cAppliSimulCodeTarget::AddPosTarget(int aNum)
         double  aR1 = RandomRay() ;
         double  aR2 = RandomRay() ;
 	OrderMinMax(aR1,aR2);  //   assure  aR1 <= aR2
+
 	if (aR2/aR1 > mRS.mRatioMax)  // assure that  R2/R1 <= RatioMax
 	{
             double aR = sqrt(aR1*aR2);
@@ -295,7 +296,7 @@ void  cAppliSimulCodeTarget::IncrustTarget(cGeomSimDCT & aGSD)
         }
      }
 #endif
-    
+
     StdOut() << "NNN= " << aName << " C0=" << aC0 <<  aBoxIm.Sz() <<  " " << aGSD.mR2/aGSD.mR1 << "\n";
 }
 
