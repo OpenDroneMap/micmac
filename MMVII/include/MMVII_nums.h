@@ -812,8 +812,14 @@ template <typename Type> Type AtanXsY_sX(const Type & X,const Type & Y,const Typ
    /// Same as DerXAtanXY_sX ...  ... bench
 template <typename Type> Type DerXAtanXsY_sX(const Type & X,const Type & Y,const Type & aEps);
 
+/*  ****************************************** */
+/*     REPRESENTATION of num on a base         */
+/* ******************************************* */
   
-
+///  Number minimal of digit for representing a number in a given base
+size_t GetNDigit_OfBase(size_t aNum,size_t aBase);
+///  Representation of number in a given base, can force minimal number of digit
+std::string  NameOfNum_InBase(size_t aNum,size_t aBase,size_t aNbDigit=0);
 
 /*  ****************************************** */
 /*       BIT MANIPULATION FUNCTIONS            */
@@ -826,6 +832,9 @@ size_t NbBits(tU_INT4 aVal);
 size_t HammingDist(tU_INT4 aV1,tU_INT4 aV2);
 /// make a circular permutation of bits, assuming a size NbIt, with  aPow2= NbBit^2
 size_t  LeftBitsCircPerm(size_t aSetFlag,size_t aPow2);
+/// make N iteratuio of LeftBitsCircPerm
+size_t  N_LeftBitsCircPerm(size_t aSetFlag,size_t aPow2,size_t N);
+
 /// make a symetry bits, assuming a size NbIt, with  aPow2= NbBit^2
 size_t  BitMirror(size_t aSetFlag,size_t aPow2);
 /// make a visualisation of bit flag as  (5,256) -> "10100000"
@@ -873,9 +882,14 @@ class cCompEquiCodes : public cMemCheck
        /// For a set of code return the ambiguity (code beloning to same class)
        std::list<tAmbigPair>  AmbiguousCode(const std::vector<cPt2di> &);
        const std::vector<cCelCC*>  & VecOfCells() const; ///< Accessor
+       const cCelCC &  CellOfCodeOK(size_t aCode) const;  ///< Error if null
+       const cCelCC *  CellOfCode(size_t) const;  ///< nullptr if bad range or no cell
 
        ~cCompEquiCodes();
+       static void Bench(size_t aNBB,size_t aPer,bool Miror);
+
    private :
+
        cCompEquiCodes(size_t aNbBits,size_t aPerdAmbig,bool WithMirror);
        /// put all the code identic, up to a circular permutation, in the same cellu
        void AddCodeWithPermCirc(size_t aCode,cCelCC *);
@@ -897,6 +911,9 @@ class  cHamingCoder
     public :
          /// Constructor , indicate the number of bit of information
          cHamingCoder(int aNbBitsIn);
+
+         /// Different of default, here we indicate the total number of bits, last indicate if require even number 
+         static cHamingCoder HCOfBitTot(int aNbBitsTot,bool WithParity=false);
 
          int NbBitsOut() const; ///< Number of bit of coded messages
          int NbBitsIn() const;  ///< Number of bits of information

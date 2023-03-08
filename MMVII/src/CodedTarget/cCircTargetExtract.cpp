@@ -4,6 +4,7 @@
 #include "MMVII_Sensor.h"
 #include "MMVII_TplImage_PtsFromValue.h"
 #include "MMVII_ImageInfoExtract.h"
+#include "CodedTarget.h"
 
 /*   Modularistion
  *   Code extern tel que ellipse
@@ -14,49 +15,112 @@
 namespace MMVII
 {
 
+using namespace cNS_CodedTarget;
 
-	/*
 class cCCDecode
 {
     public :
-         cCCDecode(const cExtractedEllipse & anEE,const cDataIm2D<tREAL4> & anIm, int aNbBits);
+         cCCDecode(const cExtractedEllipse & anEE,const cDataIm2D<tREAL4> & aDIm,const cFullSpecifTarget &);
+
+	 void Show(const std::string & aPrefix);
+
+	 void ComputePhaseTeta() ;
     private :
+
+         tREAL8 K2Rho (int aK) const;
+         tREAL8 K2Teta(int aK) const;
+         int Rho2K (tREAL8 aR) const;
+	 cPt2dr  KTetaRho2Im(const cPt2di & aKTetaRho) const;
+
+	 tREAL8 RhoOfWeight(const tREAL8 &) const;
+
+	 const cExtractedEllipse & mEE;
+         const cDataIm2D<tREAL4> & mDIm;
+	 const cFullSpecifTarget & mSpec;
+
+
+	 bool                      mOK;
+	 const int                 mPixPerB; ///< number of pixel for each bit to decode
+	 const int                 mNbRho;   ///< number of pixel for rho
+	 int                       mNbB;     ///< number of bits in code
+	 int                       mNbTeta;  ///< number of pixel for each bit to decode
+	 tREAL8                    mRho0;
+	 tREAL8                    mRho1;
+         cIm2D<tREAL4>             mImPolar;
+         cIm1D<tREAL4>             mAvg;
+	 int                       mKR0;
+	 int                       mKR1;
 };
 
-*/
-
-
-
-bool  ShowCode(const cExtractedEllipse & anEE,const cDataIm2D<tREAL4> & anIm, int aNbBits)
+cPt2dr cCCDecode::KTetaRho2Im(const cPt2di & aKTR) const
 {
-    static int aCpt=0; aCpt++;
+     return mEE.mEllipse.PtOfTeta(K2Teta(aKTR.x()),K2Rho(aKTR.y()));
+}
 
-    int aMulB   = 10;
-    int aNbTeta = aNbBits * aMulB;
-    int aNbRho  = 20;
+tREAL8 cCCDecode::K2Rho(const int aK)  const {return mRho0+ ((mRho1-mRho0)*aK) / mNbRho;}
+tREAL8 cCCDecode::K2Teta(const int aK) const {return  (2*M_PI*aK)/mNbTeta;}
 
-    double aRho0 = 1.5;
-    double aRho1 = 3.1;
+int  cCCDecode::Rho2K(const tREAL8 aR)  const 
+{
+     return round_ni( ((aR-mRho0)/(mRho1-mRho0)) * mNbRho );
+}
 
-    cIm2D<tU_INT1> aImPolar(cPt2di(aNbTeta,aNbRho));
+tREAL8 cCCDecode::RhoOfWeight(const tREAL8 & aW) const
+{
+	return (1-aW) * mSpec.Rho_1_BeginCode() + aW * mSpec.Rho_2_EndCode();
+}
 
-    for (int aKTeta=0 ; aKTeta < aNbTeta; aKTeta++)
+cCCDecode::cCCDecode(const cExtractedEllipse & anEE,const cDataIm2D<tREAL4> & aDIm,const cFullSpecifTarget & aSpec) :
+	mEE        (anEE),
+	mDIm       (aDIm),
+	mSpec      (aSpec),
+	mOK        (true),
+	mPixPerB   (10),
+	mNbRho     (20),
+	mNbB       (mSpec.NbBits()),
+	mNbTeta    (mPixPerB * mNbB),
+	mRho0      ((mSpec.Rho_0_EndCCB()+mSpec.Rho_1_BeginCode()) /2.0),
+	mRho1      (mSpec.Rho_2_EndCode() +0.2),
+	mImPolar   (cPt2di(mNbTeta,mNbRho)),
+	mAvg       ( mNbTeta,nullptr,eModeInitImage::eMIA_Null ),
+	mKR0       ( Rho2K(RhoOfWeight(0.25)) ) ,
+	mKR1       ( Rho2K(RhoOfWeight(0.75)) ) 
+{
+    for (int aKTeta=0 ; aKTeta < mNbTeta; aKTeta++)
     {
-        for (int aKRho=0 ; aKRho < aNbRho; aKRho++)
+        for (int aKRho=0 ; aKRho < mNbRho; aKRho++)
         {
-		tREAL8 aTeta = (2*M_PI*aKTeta)/aNbTeta;
-		tREAL8 aRho  = aRho0 + ((aRho1-aRho0) *aKRho) / aNbRho;
-		cPt2dr aPt = anEE.mEllipse.PtOfTeta(aTeta,aRho);
-		tREAL8 aVal = anIm.DefGetVBL(aPt,-1);
-		if (aVal<0) return false;
+		cPt2dr aPt = KTetaRho2Im(cPt2di(aKTeta,aKRho));
+		tREAL8 aVal = mDIm.DefGetVBL(aPt,-1);
+		if (aVal<0)
+		{
+                   mOK=false;
+                   return;
+		}
 
-		aImPolar.DIm().SetV(cPt2di(aKTeta,aKRho),aVal);
+		mImPolar.DIm().SetV(cPt2di(aKTeta,aKRho),aVal);
         }
     }
 
-    aImPolar.DIm().ToFile("ImPolar_"+ToStr(aCpt)+".tif");
+    if (!mOK)
+       return;
 
-    return true;
+    for (int aKTeta=0 ; aKTeta < mNbTeta; aKTeta++)
+    {
+        for (int aKRho=mKR0 ; aKRho <= mKR1; aKRho++)
+	{
+	}
+    }
+
+}
+
+
+
+void  cCCDecode::Show(const std::string & aPrefix)
+{
+    static int aCpt=0; aCpt++;
+
+    mImPolar.DIm().ToFile(aPrefix + "_ImPolar_"+ToStr(aCpt)+".tif");
 }
 
 /*  *********************************************************** */
@@ -83,6 +147,10 @@ class cAppliExtractCircTarget : public cMMVII_Appli,
 
         int ExeOnParsedBox() override;
 
+	void MakeImageLabel();
+
+	std::string         mNameSpec;
+	cFullSpecifTarget * mSpec;
         bool            mVisu;
         cExtract_BW_Ellipse * mExtrEll;
         cParamBWTarget  mPBWT;
@@ -94,6 +162,7 @@ class cAppliExtractCircTarget : public cMMVII_Appli,
         std::vector<cSeedBWTarget> mVSeeds;
 	cPhotogrammetricProject     mPhProj;
 
+	std::string                 mPrefixOut;
 	bool                        mHasMask;
 	std::string                 mNameMask;
 };
@@ -107,6 +176,7 @@ cAppliExtractCircTarget::cAppliExtractCircTarget
 ) :
    cMMVII_Appli  (aVArgs,aSpec),
    cAppliParseBoxIm<tREAL4>(*this,true,cPt2di(10000,10000),cPt2di(300,300),false) ,
+   mSpec    (nullptr),
    mVisu    (true),
    mExtrEll (nullptr),
    mImGrad  (cPt2di(1,1)),
@@ -122,7 +192,9 @@ cCollecSpecArg2007 & cAppliExtractCircTarget::ArgObl(cCollecSpecArg2007 & anArgO
 {
    // Standard use, we put args of  cAppliParseBoxIm first
    return
-         APBI_ArgObl(anArgObl)
+             APBI_ArgObl(anArgObl)
+        <<   Arg2007(mNameSpec,"XML name for bit encoding struct")
+
                    //  << AOpt2007(mDiamMinD, "DMD","Diam min for detect",{eTA2007::HDV})
    ;
 }
@@ -137,6 +209,45 @@ cCollecSpecArg2007 & cAppliExtractCircTarget::ArgOpt(cCollecSpecArg2007 & anArgO
              << AOpt2007(mPBWT.mMaxDiam,"DiamMax","Maximum diameters for ellipse",{eTA2007::HDV})
           );
 }
+
+
+void cAppliExtractCircTarget::MakeImageLabel()
+{
+    const cExtract_BW_Target::tDImMarq&     aDMarq =  mExtrEll->DImMarq();
+    for (const auto & aPix : aDMarq)
+    {
+         if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eTmp))
+            mImVisu.SetRGBPix(aPix,cRGBImage::Green);
+
+         if (     (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadZ))
+               || (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eElNotOk))
+            )
+            mImVisu.SetRGBPix(aPix,cRGBImage::Blue);
+         if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadFr))
+            mImVisu.SetRGBPix(aPix,cRGBImage::Cyan);
+         if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadEl))
+            mImVisu.SetRGBPix(aPix,cRGBImage::Red);
+         if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eAverEl))
+            mImVisu.SetRGBPix(aPix,cRGBImage::Orange);
+         if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadTeta))
+            mImVisu.SetRGBPix(aPix,cRGBImage::Yellow);
+    }
+
+    for (const auto & aSeed : mExtrEll->VSeeds())
+    {
+        if (aSeed.mOk)
+        {
+           mImVisu.SetRGBPix(aSeed.mPixW,cRGBImage::Red);
+           mImVisu.SetRGBPix(aSeed.mPixTop,cRGBImage::Yellow);
+        }
+        else
+        {
+           mImVisu.SetRGBPix(aSeed.mPixW,cRGBImage::Yellow);
+        }
+    }
+    mImVisu.ToFile(mPrefixOut + "_Label.tif");
+}
+
 
 
 
@@ -162,64 +273,18 @@ int cAppliExtractCircTarget::ExeOnParsedBox()
    {
        if (anEE.mSeed.mMarked4Test)
        {
-          ShowEllipse(anEE,mNameIm);
-          ShowCode(anEE,APBI_DIm(),14);
+          anEE.ShowOnFile(mNameIm,35,mPrefixOut);
+
+          cCCDecode aCCD(anEE,APBI_DIm(),*mSpec);
+	  aCCD.Show(mPrefixOut);
+          // ShowCode(anEE,APBI_DIm(),14);
        }
    }
 
    if (mVisu)
-   {
-       const cExtract_BW_Target::tDImMarq&     aDMarq =  mExtrEll->DImMarq();
-       for (const auto & aPix : aDMarq)
-       {
-            if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eTmp))
-               mImVisu.SetRGBPix(aPix,cRGBImage::Green);
-
-            if (     (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadZ))
-                  || (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eElNotOk))
-	       )
-               mImVisu.SetRGBPix(aPix,cRGBImage::Blue);
-            if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadFr))
-               mImVisu.SetRGBPix(aPix,cRGBImage::Cyan);
-            if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadEl))
-               mImVisu.SetRGBPix(aPix,cRGBImage::Red);
-            if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eAverEl))
-               mImVisu.SetRGBPix(aPix,cRGBImage::Orange);
-            if (aDMarq.GetV(aPix)==tU_INT1(eEEBW_Lab::eBadTeta))
-               mImVisu.SetRGBPix(aPix,cRGBImage::Yellow);
-	       /*
-	       */
-
-	       /*
-	    cPt3di aRGB =  mImVisu.GetRGBPix(aPix);
-	    if ( mExtrEll->DGx().GetV(aPix) >0)
-	        aRGB[2] =    aRGB[2] * 0.9;
-	    else
-	        aRGB[2] =   255 - (255- aRGB[2]) * 0.9;
-            mImVisu.SetRGBPix(aPix,aRGB);
-	    */
-
-	    // if (mGrad.mGy.DIm().GetV(aPix) == 0)
-       }
-
-       for (const auto & aSeed : mExtrEll->VSeeds())
-       {
-           if (aSeed.mOk)
-	   {
-              mImVisu.SetRGBPix(aSeed.mPixW,cRGBImage::Red);
-              mImVisu.SetRGBPix(aSeed.mPixTop,cRGBImage::Yellow);
-	   }
-	   else
-	   {
-              mImVisu.SetRGBPix(aSeed.mPixW,cRGBImage::Yellow);
-	   }
-       }
-   }
-
+      MakeImageLabel();
 
    delete mExtrEll;
-   if (mVisu)
-      mImVisu.ToFile("TTTT.tif");
 
    return EXIT_SUCCESS;
 }
@@ -228,6 +293,10 @@ int cAppliExtractCircTarget::ExeOnParsedBox()
 
 int  cAppliExtractCircTarget::Exe()
 {
+   mPrefixOut = "CircTarget_" +  Prefix(APBI_NameIm());
+
+   mSpec = cFullSpecifTarget::CreateFromFile(mNameSpec);
+
    mPhProj.FinishInit();
 
    mHasMask =  mPhProj.ImageHasMask(APBI_NameIm()) ;
@@ -239,6 +308,7 @@ int  cAppliExtractCircTarget::Exe()
 
    StdOut() << "MAK=== " <<   mHasMask << " " << mNameMask  << "\n";
 
+   delete mSpec;
    return EXIT_SUCCESS;
 }
 
