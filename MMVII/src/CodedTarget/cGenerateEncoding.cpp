@@ -264,6 +264,7 @@ cCollecSpecArg2007 & cAppliGenerateEncoding::ArgOpt(cCollecSpecArg2007 & anArgOp
                << AOpt2007(mSpec.mBase4Name,"Base4N","Base for name",{eTA2007::HDV})
                << AOpt2007(mSpec.mNbDigit,"NbDig","Number of digit for name (default depend of max num & base)")
                << AOpt2007(mSpec.mUseHammingCode,"UHC","Use Hamming code")
+               << AOpt2007(mMiror,"Mir","Unify mirro codes")
           ;
 }
 
@@ -275,6 +276,7 @@ void cAppliGenerateEncoding::Show()
 
 int  cAppliGenerateEncoding::Exe()
 {
+   int Num000 = 0;
    //  [0]  ========  Finish initialization and checking ==================
    
    // By convention Freq=0 mean highest frequence 
@@ -304,6 +306,7 @@ int  cAppliGenerateEncoding::Exe()
    {
         mUseAiconCode = true;
         SetIfNotInit(mSpec.mParity,size_t(2));
+	Num000 = 1;
    }
 
    cHamingCoder aHC(1);
@@ -363,6 +366,26 @@ int  cAppliGenerateEncoding::Exe()
        }
        mVOC = mCEC->VecOfUsedCode(aVCode,true);
        StdOut() <<  "Size after file filter " << mVOC.size() << "\n";
+
+
+       if (1)
+       {
+          for (size_t aK=1 ; aK<aVCode.size(); aK++)
+	  {
+              // StdOut() << "KKK " << aVCode[aK] << "\n";
+              MMVII_INTERNAL_ASSERT_bench(aVCode[aK-1].x() < aVCode[aK].x(),"Not growing order for num in 3D-AICON");
+              MMVII_INTERNAL_ASSERT_bench(aVCode[aK-1].y() < aVCode[aK].y(),"Not growing order for bitflag in 3D-AICON");
+	  }
+
+          for (size_t aK=0 ; aK<aVCode.size(); aK++)
+	  {
+		 const cCelCC * aCel = mCEC->CellOfCode(aVCode[aK].y());
+                 MMVII_INTERNAL_ASSERT_bench(aCel!=0,"CellOfCode in3D AICON");
+                 MMVII_INTERNAL_ASSERT_bench(aVCode[aK].y()==(int)aCel->mLowCode,"CellOfCode in3D AICON");
+	  }
+
+
+       }
    }
   
    // [3.0]  if we use hamming code, not all numbers are possible
@@ -459,11 +482,14 @@ int  cAppliGenerateEncoding::Exe()
    //        * compute nb of digit,  names ..
    //        * save in a file
 
+   // restore order on low code that may have been supress by hamming, useful also to 
+   // restor AICON num
+   SortOnCriteria(mVOC,[](auto aPCel){return aPCel->mLowCode;});
    {
        cBitEncoding aBE;
        for (size_t aK=0 ; aK<mVOC.size(); aK++)  
        {
-           size_t aNum = aK;
+           size_t aNum = aK + Num000;
 	   size_t aCode = mVOC[aK]->mLowCode;
            aBE.AddOneEncoding(aNum,aCode);  // add a new encoding
 

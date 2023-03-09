@@ -25,7 +25,12 @@ class cCCDecode
 	 void Show(const std::string & aPrefix);
 
 	 void ComputePhaseTeta() ;
+	 void ComputeCode(bool Show) ;
     private :
+
+	 tREAL8 Dev(int aK1,int aK2) const;
+	 tREAL8 Avg(int aK1,int aK2) const;
+	 tREAL8 DevOfPhase(int aK0) const;
 
          tREAL8 K2Rho (int aK) const;
          tREAL8 K2Teta(int aK) const;
@@ -47,10 +52,103 @@ class cCCDecode
 	 tREAL8                    mRho0;
 	 tREAL8                    mRho1;
          cIm2D<tREAL4>             mImPolar;
+         cDataIm2D<tREAL4> &       mDIP;
          cIm1D<tREAL4>             mAvg;
+         cDataIm1D<tREAL4> &       mDAvg;
 	 int                       mKR0;
 	 int                       mKR1;
+	 int                       mPhase0;
+	 tREAL8                    mBlack;
+	 tREAL8                    mWhite;
+	 tREAL8                    mBWAmpl;
+	 tREAL8                    mBWAvg;
+	 const cOneEncoding *      mEnCode;
 };
+
+tREAL8 cCCDecode::Dev(int aK1,int aK2) const
+{
+    cComputeStdDev<tREAL8> aCS;
+    for (int aK=aK1 ; aK<aK2 ; aK++)
+    {
+         aCS.Add(mDAvg.GetV(aK%mNbTeta));
+    }
+    return aCS.StdDev(0);
+}
+
+tREAL8 cCCDecode::Avg(int aK1,int aK2) const
+{
+    tREAL8 aSom =0 ;
+    for (int aK=aK1 ; aK<aK2 ; aK++)
+    {
+          aSom += mDAvg.GetV(aK%mNbTeta);
+    }
+    return aSom / (aK2-aK1);
+}
+
+tREAL8 cCCDecode::DevOfPhase(int aK0) const
+{
+    tREAL8 aSum=0;
+    for (int aKBit=0 ; aKBit<mNbB ; aKBit++)
+    {
+        int aK1 = aK0+aKBit*mPixPerB;
+        aSum +=  Dev(aK1+1,aK1+mPixPerB-1);
+    }
+
+    return aSum / mNbB;
+}
+
+void cCCDecode::ComputePhaseTeta() 
+{
+    cWhichMin<int,tREAL8> aMinDev;
+
+    for (int aK0=0 ;aK0< mPixPerB ; aK0++)
+	    aMinDev.Add(aK0,DevOfPhase(aK0));
+
+    mPhase0 = aMinDev.IndexExtre();
+
+    if (     (aMinDev.ValExtre() > 0.1 * Dev(0,mNbTeta))
+          || (aMinDev.ValExtre() > 0.05 *  mBWAmpl)
+       )
+    {
+        mOK = false;
+	return;
+    }
+}
+
+void cCCDecode::ComputeCode(bool Show)
+{
+    size_t aFlag=0;
+    for (int aKBit=0 ; aKBit<mNbB ; aKBit++)
+    {
+        int aK1 = mPhase0+aKBit*mPixPerB;
+        tREAL8 aMoy =  Avg(aK1+1,aK1+mPixPerB-1);
+
+	if (mSpec.BitIs1(aMoy>mBWAvg))
+           aFlag |= (1<<aKBit);
+    }
+
+
+    for (bool doMirror : {false,true})
+    {
+    // if (! mSpec.AntiClockWiseBit())
+        if (doMirror)
+            aFlag = BitMirror(aFlag,1<<mSpec.NbBits());
+         mEnCode = mSpec.EncodingFromCode(aFlag);
+
+
+       if (Show)
+       {
+            if (mEnCode) 
+            StdOut() << "  * Name=" << mEnCode->Name()  
+		     << " Code=" <<  mEnCode->Code() 
+		     << " BF=" << StrOfBitFlag(mEnCode->Code(), 1<<mNbB)
+                     << "\n";
+        }
+    }
+    if (Show)  StdOut() << "\n";
+}
+
+
 
 cPt2dr cCCDecode::KTetaRho2Im(const cPt2di & aKTR) const
 {
@@ -82,10 +180,20 @@ cCCDecode::cCCDecode(const cExtractedEllipse & anEE,const cDataIm2D<tREAL4> & aD
 	mRho0      ((mSpec.Rho_0_EndCCB()+mSpec.Rho_1_BeginCode()) /2.0),
 	mRho1      (mSpec.Rho_2_EndCode() +0.2),
 	mImPolar   (cPt2di(mNbTeta,mNbRho)),
+        mDIP       (mImPolar.DIm()),
 	mAvg       ( mNbTeta,nullptr,eModeInitImage::eMIA_Null ),
+	mDAvg      ( mAvg.DIm()),
 	mKR0       ( Rho2K(RhoOfWeight(0.25)) ) ,
-	mKR1       ( Rho2K(RhoOfWeight(0.75)) ) 
+	mKR1       ( Rho2K(RhoOfWeight(0.75)) ) ,
+	mPhase0    (-1),
+	mBlack     (mEE.mSeed.mBlack),
+	mWhite     (mEE.mSeed.mWhite),
+	mBWAmpl    (mWhite-mBlack),
+	mBWAvg     ((mBlack+mWhite)/2.0),
+	mEnCode    (nullptr)
 {
+
+    //  compute a polar image
     for (int aKTeta=0 ; aKTeta < mNbTeta; aKTeta++)
     {
         for (int aKRho=0 ; aKRho < mNbRho; aKRho++)
@@ -98,20 +206,29 @@ cCCDecode::cCCDecode(const cExtractedEllipse & anEE,const cDataIm2D<tREAL4> & aD
                    return;
 		}
 
-		mImPolar.DIm().SetV(cPt2di(aKTeta,aKRho),aVal);
+		mDIP.SetV(cPt2di(aKTeta,aKRho),aVal);
         }
     }
 
     if (!mOK)
        return;
 
+    // compute an image
     for (int aKTeta=0 ; aKTeta < mNbTeta; aKTeta++)
     {
+        std::vector<tREAL8> aVGray;
         for (int aKRho=mKR0 ; aKRho <= mKR1; aKRho++)
 	{
+            aVGray.push_back(mDIP.GetV(cPt2di(aKTeta,aKRho)));
 	}
+        mDAvg.SetV(aKTeta,NonConstMediane(aVGray));
     }
 
+    ComputePhaseTeta() ;
+    if (!mOK) return;
+
+    ComputeCode(false);
+    if (!mOK) return;
 }
 
 
@@ -120,7 +237,22 @@ void  cCCDecode::Show(const std::string & aPrefix)
 {
     static int aCpt=0; aCpt++;
 
-    mImPolar.DIm().ToFile(aPrefix + "_ImPolar_"+ToStr(aCpt)+".tif");
+    cRGBImage  aIm = RGBImFromGray(mImPolar.DIm(),1.0,9);
+
+    if (mPhase0>=0)
+    {
+       for (int aKBit=0 ; aKBit<mNbB ; aKBit++)
+       {
+           tREAL8 aK1 = mPhase0+aKBit*mPixPerB -0.5;
+
+	   aIm.DrawLine(cPt2dr(aK1,0),cPt2dr(aK1,mNbTeta),cRGBImage::Red);
+
+       }
+    }
+    ComputeCode(true);
+
+
+    aIm.ToFile(aPrefix + "_ImPolar_"+ToStr(aCpt)+".tif");
 }
 
 /*  *********************************************************** */
@@ -273,7 +405,7 @@ int cAppliExtractCircTarget::ExeOnParsedBox()
    {
        if (anEE.mSeed.mMarked4Test)
        {
-          anEE.ShowOnFile(mNameIm,35,mPrefixOut);
+          // anEE.ShowOnFile(mNameIm,35,mPrefixOut);
 
           cCCDecode aCCD(anEE,APBI_DIm(),*mSpec);
 	  aCCD.Show(mPrefixOut);
