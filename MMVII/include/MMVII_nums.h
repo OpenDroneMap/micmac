@@ -11,6 +11,7 @@ namespace MMVII
 // Call V1 Fast kth value extraction
 double NC_KthVal(std::vector<double> &, double aProportion);
 double Cst_KthVal(const std::vector<double> &, double aProportion);
+double Average(const std::vector<double> &);
 
 
 // some time needs a null val for any type with + (neutral for +)
@@ -845,6 +846,8 @@ size_t  Str2BitFlag(const std::string & aStr);
 void  BitsToVect(std::vector<int> & aVBits,tU_INT4 aVal,size_t aPow2);
 ///  return the maximal length of consecutive 0 & 1, interpreted circularly    (94="01111010", 256=2^8)  =>  (3,2)
 cPt2di MaxRunLength(tU_INT4 aVal,size_t aPow2);
+///  idem above + memo the intervals
+cPt2di MaxRunLength(tU_INT4 aVal,size_t aPow2,std::vector<cPt2di> & aV0,std::vector<cPt2di> & aV1);
 /// Max of both run (0 and 1)
 size_t MaxRun2Length(tU_INT4 aVal,size_t aPow2);
 
