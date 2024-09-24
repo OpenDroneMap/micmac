@@ -64,7 +64,7 @@
                <EgaliseSomCh> false </EgaliseSomCh>
                <PdsRappelInit>  0.001 </PdsRappelInit>
                <GlobRappInit>
-                    <DoGlob> true </DoGlob>
+                    <DoGlob> false </DoGlob>
                     <Degres>  -1 -1  </Degres>
                     <Degres>  ${DegRapX} ${DegRapY} </Degres>
                     <RapelOnEgalPhys> ${RapGlobPhys} </RapelOnEgalPhys>
