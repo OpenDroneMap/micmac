@@ -773,7 +773,7 @@ void cAppliPastis::GenerateXML(std::pair<cCompileCAPI,cCompileCAPI> & aPair)
           SplitDirAndFile(aD,aN,mNameHomXML);
           mNameHomXML = aD + "Failed_" + aN;
       }
-      std::cout << "OK GLOB " <<  OKGlob << " " << mNameHomXML << "\n";
+      //std::cout << "OK GLOB " <<  OKGlob << " " << mNameHomXML << "\n";
    }
 
    double aSFH = mSeuilFHom;
@@ -786,11 +786,11 @@ void cAppliPastis::GenerateXML(std::pair<cCompileCAPI,cCompileCAPI> & aPair)
    {
       aLCple = FiltrageHomogr(aLCple,aSFH);
    }
-   std::cout << "Apres Hom  " << aLCple.size() << "\n";
+   //std::cout << "Apres Hom  " << aLCple.size() << "\n";
 
    aLCple = FiltrageRot(aLCple,1.0);
 
-   std::cout << "Apres Rot  " << aLCple.size() << "\n";
+   //std::cout << "Apres Rot  " << aLCple.size() << "\n";
 
    if (int(aLCple.size())>=mNbMinPtsExp)
    {

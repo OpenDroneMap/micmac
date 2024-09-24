@@ -9,36 +9,36 @@
         <!-- Truc +ou- genreaux a ttes les applis -->
         <DicoLoc >
 
-               <Symb>  DR0X=-1 </Symb>
-               <Symb>  DR0Y=-1 </Symb>
+               <Symb>  DR0X=-2 </Symb>
+               <Symb>  DR0Y=-2 </Symb>
 
-               <Symb>  DR1X=1 </Symb>
-               <Symb>  DR1Y=1 </Symb>
+               <Symb>  DR1X=2 </Symb>
+               <Symb>  DR1Y=2 </Symb>
 
-               <Symb>  DegRapX=0 </Symb>
-               <Symb>  DegRapY=0 </Symb>
+               <Symb>  DegRapX=4 </Symb>
+               <Symb>  DegRapY=4 </Symb>
 
-               <Symb>  RapGlobPhys=true </Symb>
+               <Symb>  RapGlobPhys=false </Symb>
 
 <!--
                <Symb>  ImLabel=NoLabel </Symb>
--->
                <Symb>  ImLabel=Label.tif </Symb>
+-->
                <Symb>  ThisDir=XXXX </Symb>
                <Symb>  DynGlob=1.0 </Symb>
 
                 <Symb>  ImPrio=".*" </Symb>
 
 
-                <Symb>  CorrThresh=0.7 </Symb>
-                <Symb>  NbPerIm=2.5e4 </Symb>
-                <Symb>  SzV=2 </Symb>
+                <Symb>  CorrThresh=0.4 </Symb>
+                <Symb>  NbPerIm=1.5e4 </Symb>
+                <Symb>  SzV=75 </Symb>
                 <Symb>  DoL1Filter=true </Symb>
-
+<!--
                 <Symb>  UseSatThr=false </Symb>
                 <Symb>  SatThr=1e9 </Symb>
 
-		<Symb>  DoRadiomEgal=1 </Symb> <!-- perform or not the radiometric egalisation -->
+		<Symb>  DoRadiomEgal=1 </Symb>--> <!-- perform or not the radiometric egalisation -->
 <!--
                <SzVois >  ${SzV}  </SzVois>
                <CorrelThreshold> ${CorrThresh} </CorrelThreshold>
@@ -77,8 +77,8 @@
            <KeyAssocMetaData > NKS-Assoc-ChangPrefixAndExt@Ort_@tif@PC_@xml  </KeyAssocMetaData>
            <KeyAssocNamePC >   NKS-Assoc-ChangPrefixAndExt@Ort_@tif@PC_@tif </KeyAssocNamePC>
            <KeyAssocNameIncH>  NKS-Assoc-ChangPrefixAndExt@Ort_@tif@Incid_@tif </KeyAssocNameIncH>
-           <FileExterneMasqMesures> MTDMaskOrtho.xml  </FileExterneMasqMesures>
-
+<!--           <FileExterneMasqMesures> MTDMaskOrtho.xml  </FileExterneMasqMesures>
+-->
            <KeyAssocPriorite> Loc-Key-Prio </KeyAssocPriorite>
 
 
@@ -99,8 +99,8 @@
 
         </SectionFiltrageIn>
 
-   	<#WHEN VTEST=${DoRadiomEgal}>
-        <SectionEgalisation>
+<!--   	<#WHEN VTEST=${DoRadiomEgal}>-->
+        <SectionEgalisation Nb="?">
                <SzVois >  ${SzV}  </SzVois>
                <CorrelThreshold> ${CorrThresh} </CorrelThreshold>
                <NbPEqualMoyPerImage>  ${NbPerIm} </NbPEqualMoyPerImage>
@@ -126,14 +126,14 @@
                </GlobRappInit>
 
         </SectionEgalisation>
-  	</#WHEN>
+<!--  	</#WHEN>-->
 
         <SectionSorties>
-           <SzDalle>    1000            </SzDalle>
+           <SzDalle>    500            </SzDalle>
            <SzBrd>      100             </SzBrd>
-           <NameOrtho>  ${NameOrtho} </NameOrtho>
+           <NameOrtho>  Orthophotomosaic.tif </NameOrtho>
            <NameLabels>  ${ImLabel} </NameLabels>
-           <SzTileResult> 20000 </SzTileResult>
+           <SzTileResult> 2000000 </SzTileResult>
            <DynGlob>      ${DynGlob} </DynGlob>
 
         </SectionSorties>

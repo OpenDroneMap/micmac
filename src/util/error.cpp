@@ -63,7 +63,7 @@ void BasicErrorHandler()
 int TheIntFuckingReturnValue=1234567;
 char * TheCharPtrFuckingReturnValue=0;
 
-bool TheExitOnBrkp  = false;
+bool TheExitOnBrkp  = true;
 // bool TheExitOnBrkp  = false;
 bool TheExitOnNan   = false;
 bool TheExitOnWarn  = false;
@@ -85,7 +85,7 @@ void throwError(std::string err)
 
 int GetCharOnBrkp()
 {
-std::cout << "TTTTTTTtttttttttttttttt\n"; getchar();
+//std::cout << "TTTTTTTtttttttttttttttt\n"; getchar();
 
 
    BasicErrorHandler();

@@ -2704,7 +2704,7 @@ if (MPD_MM())
 
 
 
-       std::cout << "nnnnnnnn " << aStr << "\n";
+       //std::cout << "nnnnnnnn " << aStr << "\n";
         System(aStr.c_str());
    }
 
