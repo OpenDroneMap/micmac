@@ -1,6 +1,7 @@
 #include "cMMVII_Appli.h"
 #include "MMVII_Sys.h"
 #include "MMVII_DeclareCste.h"
+#include "MMVII_2Include_Serial_Tpl.h"
 
 namespace MMVII
 {
@@ -246,6 +247,23 @@ cMMVII_Appli::cMMVII_Appli
    MMVII_INTERNAL_ASSERT_always(ExistFile(mFullBin),"Could not find MMVII binary (tried with " +  mFullBin + ")");
 }
 
+struct cSpecifProfileUserMMVII
+{
+     public :
+         std::string mNameProfile;
+};
+
+void AddData(const cAuxAr2007 & anAux,cSpecifProfileUserMMVII & aSpec)
+{
+     AddData(cAuxAr2007("NameProfile",anAux),aSpec.mNameProfile);
+}
+
+void AddData(const cAuxAr2007 & anAux,cParamProfile & aProfile)
+{
+     AddData(cAuxAr2007("UserName",anAux),aProfile.mUserName);
+     AddData(cAuxAr2007("NbProcMax",anAux),aProfile.mNbProcMax);
+}
+
 
 void cMMVII_Appli::InitMMVIIDirs(const std::string& aMMVIIDir)
 {
@@ -261,8 +279,10 @@ void cMMVII_Appli::InitMMVIIDirs(const std::string& aMMVIIDir)
     mDirMicMacv2       = mTopDirMMVII;
     mDirTestMMVII      = mDirMicMacv2 + MMVIITestDir;
     mDirRessourcesMMVII      = mDirMicMacv2 + MMVIIRessourcesDir;
+    mDirLocalParameters      = mDirMicMacv2 + MMVIILocalParametersDir;
     mTmpDirTestMMVII   = mDirTestMMVII + "Tmp/";
     mInputDirTestMMVII = mDirTestMMVII + "Input/";
+
 }
 
 const std::vector<eSharedPO>    cMMVII_Appli::EmptyVSPO;  ///< Deafaut Vector  shared optional parameter
@@ -322,8 +342,6 @@ bool   cMMVII_Appli::HasSharedSPO(eSharedPO aV) const
 {
    return BoolFind(mVSPO,aV);
 }
-
-
 
 void cMMVII_Appli::SetNot4Exe()
 {
@@ -652,6 +670,20 @@ void cMMVII_Appli::InitParam()
       {
          aVSpec[aK]->CheckSize(aSpecSize);  // Then test it
       }
+
+
+      std::string aNameTag;
+      if (aVSpec[aK]->HasType(eTA2007::XmlOfTopTag,&aNameTag))
+      {
+         if (!IsFileXmlOfGivenTag(true,aVValues[aK],aNameTag))
+	 {
+	       MMVII_UsersErrror(eTyUEr::eBadXmlTopTag,"[" + aVValues[aK] + "] is not an existing xml file of main tag <" + aNameTag + ">");
+			      // IntervalOk=" + anArg + " Got=" + ToStr(int(aVal.size())));
+	 }
+	 //        MMVII_UsersErrror(eTyUEr::eBadSize4Vect,"IntervalOk=" + anArg + " Got=" + ToStr(int(aVal.size())));
+         // aVSpec[aK]->CheckSize(aSpecSize);  // Then test it
+      }
+      // XmlOfTag,
   }
 
   // Analyse the possible main patterns
@@ -754,7 +786,46 @@ void cMMVII_Appli::InitParam()
   {
       mSeedRand =  std::chrono::system_clock::to_time_t(mT0);
   }
+
+  //  handling the user, profile ....
+  static std::string NameFileCurentProfile =  "MMVII-CurentPofile.xml";
+  if (! ExistFile(mDirLocalParameters+NameFileCurentProfile))
+  {
+      NameFileCurentProfile = "Default-" + NameFileCurentProfile;
+  }
+  static std::string NameFileUseOfProfile =  "MMVII-UserOfProfile.xml";
+  if (0) // first time create by hand
+  {
+        cSpecifProfileUserMMVII  aSpec;
+        aSpec.mNameProfile = "Default";
+	SaveInFile(aSpec,mDirLocalParameters+NameFileCurentProfile);
+  }
+  // read the name of the profile
+  {
+	  cSpecifProfileUserMMVII aSpec;
+	  // is user has not created a profil then we use the default that is git-shared
+
+	  ReadFromFile(aSpec,mDirLocalParameters+NameFileCurentProfile);
+	  mProfileUsage = aSpec.mNameProfile;
+	  mDirProfileUsage =  mDirLocalParameters + mProfileUsage + StringDirSeparator();
+
+  }
+
+  if (0)
+  {
+      CreateDirectories(mDirProfileUsage,false);
+
+      mParamProfile.mUserName = "Uknown";
+      mParamProfile.mNbProcMax = 1000;
+      SaveInFile(mParamProfile,mDirProfileUsage+NameFileUseOfProfile);
+  }
+  ReadFromFile(mParamProfile,mDirProfileUsage+NameFileUseOfProfile);
+  //  StdOut() << "USER=" << UserName()    << " " << mDirProfileUsage << "\n";getchar();
 }
+
+const  std::string & cMMVII_Appli::UserName() {return mParamProfile.mUserName;}
+const  std::string & cMMVII_Appli::DirProfileUsage() {return mDirProfileUsage;}
+
 
 tPtrArg2007 cMMVII_Appli::AOptBench()
 {
@@ -1188,6 +1259,10 @@ std::string cMMVII_Appli::mTopDirMMVII;
 std::string cMMVII_Appli::mFullBin;
 std::string cMMVII_Appli::mDirTestMMVII;
 std::string cMMVII_Appli::mDirRessourcesMMVII;
+std::string cMMVII_Appli::mDirLocalParameters;
+std::string cMMVII_Appli::mProfileUsage;
+std::string cMMVII_Appli::mDirProfileUsage;
+cParamProfile cMMVII_Appli::mParamProfile;
 std::string cMMVII_Appli::mDirMicMacv1;
 std::string cMMVII_Appli::mDirMicMacv2;
 

@@ -185,9 +185,12 @@ template<> cE2Str<eTA2007>::tMapE2Str cE2Str<eTA2007>::mE2S
                 {eTA2007::Radiom,"Rad"},
                 {eTA2007::MeshDev,"MeshDev"},
                 {eTA2007::Mask,"Mask"},
+                {eTA2007::MetaData,"MetaData"},
+                {eTA2007::PointsMeasure,"PointsMeasure"},
                 {eTA2007::Input,"In"},
                 {eTA2007::Output,"Out"},
                 {eTA2007::OptionalExist,"OptEx"},
+                {eTA2007::PatParamCalib,"ParamCalib"},
                 {eTA2007::AddCom,"AddCom"},
                 {eTA2007::Internal,"##Intern"},
                 {eTA2007::Tuning,"##Tune"},
@@ -195,6 +198,7 @@ template<> cE2Str<eTA2007>::tMapE2Str cE2Str<eTA2007>::mE2S
                 {eTA2007::Shared,"##Shar"},
                 {eTA2007::HDV,"##HDV"},
                 {eTA2007::ISizeV,"##ISizeV"},
+                {eTA2007::XmlOfTopTag,"##XmlOfTopTag"},
                 {eTA2007::FFI,"FFI"}
            };
 TPL_ENUM_2_STRING(eTA2007);
@@ -223,6 +227,7 @@ template<> cE2Str<eTyUEr>::tMapE2Str cE2Str<eTyUEr>::mE2S
                 {eTyUEr::eCreateDir,"MkDir"},
                 {eTyUEr::eRemoveFile,"RmFile"},
                 {eTyUEr::eEmptyPattern,"EmptyPattern"},
+                {eTyUEr::eBadXmlTopTag,"XmlTopTag"},
                 {eTyUEr::eBadFileSetName,"FileSetN"},
                 {eTyUEr::eBadFileRelName,"FileRelN"},
                 {eTyUEr::eOpenFile,"OpenFile"},
@@ -318,6 +323,13 @@ template<> cE2Str<eTyCodeTarget>::tMapE2Str cE2Str<eTyCodeTarget>::mE2S
            };
 TPL_ENUM_2_STRING(eTyCodeTarget);
 
+template<> cE2Str<eMTDIm>::tMapE2Str cE2Str<eMTDIm>::mE2S
+           {
+                {eMTDIm::eFocalmm,"Focalmm"},
+                {eMTDIm::eAperture,"Aperture"},
+                {eMTDIm::eModeleCam,"ModeleCam"},
+           };
+TPL_ENUM_2_STRING(eMTDIm);
 
 
 template<> cE2Str<eModeCaracMatch>::tMapE2Str cE2Str<eModeCaracMatch>::mE2S
@@ -447,6 +459,7 @@ void BenchEnum(cParamExeBench & aParam)
     TplBenchEnum<eModePaddingEpip>();
     TplBenchEnum<eModeCaracMatch>();
     TplBenchEnum<eDCTFilters>();
+    TplBenchEnum<eTyCodeTarget>();
 
     aParam.EndBench();
 }
