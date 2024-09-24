@@ -1338,12 +1338,12 @@ void cAppliBatch::DoOne()
     Exec();
     DoPurge();
 
-    //if (! ByMKf())
-    //{
-    //    std::cout << "\n";
-    //    std::cout << "       -----------------------------\n";
-    //    std::cout << "\n";
-    //}
+//    if (! ByMKf())
+//    {
+//        std::cout << "\n";
+//        std::cout << "       -----------------------------\n";
+//        std::cout << "\n";
+//    }
 }
 
 cEl_GPAO &  cAppliBatch::GPAO ()
